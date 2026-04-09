@@ -1,0 +1,22 @@
+version 01.01	12 minutes dev	2 minutes code gen	1 minutes test		15 minutes total
+
+This is the start of a new game. This one will be implemented via Claude. This 
+game I'm  trying for something that has the feel of an Atari (800 and/or 2600)
+in the early 80's. The goal is not for a perfect Atari rendition, but to get 
+some of its feel involved.
+I received some ideas of games from various AIs (OpenAI, Claude, Gemini). Claude
+has my favorite... kinda. It was a game called Crossroad. The playing field was 
+a road intersection and the purpose... it wasn't clear, or if it was clear, it 
+was easy to cheat. But it gave me the idea for this one. Consider this similar 
+to Frogger, or even more specific, Freeway. You will drive a motorcycle back and 
+forth, across two four-lane highways. Simple, fun, and exciting. To start, to 
+summarize:
+* There are nine rows of car lane. 
+* There are the four lanes at the top. 
+* There is a yellow center divider in the middle. 
+* There are four lanes at the bottom.
+* The player makes as many laps as possible, crossing the roads each time.
+This game is playable with this little guidance. It's too difficult and there
+is plenty to change. But I am amazed at the quality for just 15 minutes.
+More details and refinement to follow.
+

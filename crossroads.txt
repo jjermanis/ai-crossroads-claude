@@ -1,0 +1,7 @@
+Create a single-page app in a single HTML file with the following requirements:
+- Name: Crossroad
+- Goal: Make as many laps as possible, crossing the roads each time.
+- The game screen is 640x480 pixels
+- The UI should very much resemble an Atari 2600 game built in 1980
+- The main highways all travel across the screen horizontally. There are centered vertical on the screen. There are nine rows of car lane. There are the four lanes at the top. There is a yellow center divider in the middle. There are four lanes at the bottom.
+
