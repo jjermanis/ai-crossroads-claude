@@ -1,7 +1,17 @@
 Create a single-page app in a single HTML file with the following requirements:
-- Name: Crossroad
+- Name: Crossroads
 - Goal: Make as many laps as possible, crossing the roads each time.
 - The game screen is 640x480 pixels
 - The UI should very much resemble an Atari 2600 game built in 1980
-- The main highways all travel across the screen horizontally. There are centered vertical on the screen. There are nine rows of car lane. There are the four lanes at the top. There is a yellow center divider in the middle. There are four lanes at the bottom.
-
+- I will provide advice on how to design UI to look like an Atari game. Do not put any letters or number within the game screen, unless I have specifically asked. If you want letters or numbers, show them outside of the game screen.
+- I will provide more advice on AI style. The frame rate of the game is 30 frames per second.
+- The main highways for the cars all travel across the screen horizontally. There are centered vertical on the screen. There are nine rows of car lane. There are the four lanes at the top. There is a yellow center divider in the middle. There are four lanes at the bottom.
+- The crossroads are for the player. There are two crossroads. They travel from top-to-bottom. One is 32 pixels to the left of the center, the other 32 pixels to the right.
+- The player starts the game on a motorcycle, on the left crossroad, toward the bottom. 
+- The player control are only up and down keys. They will only control move up and down, there is no left nor right.
+- The top 4 lanes and the bottom 4 lanes - you can think of these as mirror images of each other. I will provide rules how the bottom 4 lanes are populated. The top 4 lines will have the same cars, at the same time, at the same speed, but different directions.
+- On the bottom 4 lanes, all the car move from the left side of the screen, and move to the right. The top 4 lanes are the opposite: from right-to-left.
+- On the bottom 4 lanes, I will refer to the bottom lanes as Lane 0. The numbers increase: the top lane of the bottom lanes is Lane 3. Those same names apply to the top 4 lanes. Lane 0 is the top of the top lanes; Lane 3 is the bottom of the top lanes.
+- The game will play in 9 levels. There is nothing that the player does to advance levels. The game starts at Level 1. After each 20 seconds, the game increases 1 level. When the game increases past Level 9, the game is over.
+- The game level is shown in the very upper-left hand corner of the game. The format is a capital L, followed by the digit level.
+- Each lane for each level will have specific data. Each level and lane have configuration for the speed of cars (in lines per frame), how many frames until the next car starts, and how long you wait to send the first car for that lane. This will be in source code - you do not see these numbers directly in the game.

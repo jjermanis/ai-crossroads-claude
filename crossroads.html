@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CROSSROAD</title>
+<title>CROSSROADS</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -13,482 +13,563 @@
     justify-content: center;
     min-height: 100vh;
     font-family: 'Courier New', monospace;
+    user-select: none;
   }
   #hud {
     width: 640px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     color: #f0c040;
     font-size: 20px;
     letter-spacing: 4px;
     text-transform: uppercase;
-    padding: 6px 4px;
+    padding: 6px 8px;
   }
   canvas {
     display: block;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
-    border-top: 3px solid #555;
-    border-bottom: 3px solid #555;
   }
   #footer {
     width: 640px;
-    display: flex;
-    justify-content: center;
+    text-align: center;
     color: #888;
     font-size: 13px;
     letter-spacing: 3px;
     text-transform: uppercase;
     padding: 6px 4px;
+    height: 24px;
   }
 </style>
 </head>
 <body>
 
 <div id="hud">
-  <span>LAPS: <span id="lapDisplay">0</span></span>
-  <span id="titleDisplay">CROSSROAD</span>
-  <span>HI: <span id="hiDisplay">0</span></span>
+  <span>LAPS:&nbsp;<span id="lapDisplay">0</span></span>
+  <span>CROSSROADS</span>
+  <span>BEST:&nbsp;<span id="hiDisplay">0</span></span>
 </div>
 <canvas id="c" width="640" height="480"></canvas>
-<div id="footer" id="footer">PRESS SPACE TO START</div>
+<div id="footer">&nbsp;</div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════════
+//  CROSSROADS — Atari 2600 style, 30fps, 9 levels
+// ═══════════════════════════════════════════════════════════════════
+
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 const W = 640, H = 480;
+const FPS              = 30;
+const FRAME_MS         = 1000 / FPS;       // ~33.33ms per frame
+const LEVEL_SECS       = 20;
+const MAX_LEVEL        = 9;
+const FRAMES_PER_LEVEL = LEVEL_SECS * FPS; // 600 frames per level
 
-// ─── LAYOUT ───────────────────────────────────────────────
-// 9 rows:
-//   Row 0:   Safe zone (grass) top         — 40px
-//   Row 1-4: Traffic lanes top (→ right)   — 4 × 44px = 176px
-//   Row 5:   Yellow center divider         — 24px
-//   Row 6-9: Traffic lanes bottom (← left) — 4 × 44px = 176px
-//   Row 10:  Safe zone (grass) bottom      — 64px  (player starts here)
-// Total: 40 + 176 + 24 + 176 + 64 = 480 ✓
+// ── LAYOUT ──────────────────────────────────────────────────────────
+//   0.. 39  safe top     40px
+//  40..215  4 top lanes  4×44=176px   cars go LEFT (←)
+// 216..239  divider      24px
+// 240..415  4 bot lanes  4×44=176px   cars go RIGHT (→)
+// 416..479  safe bottom  64px
 
-const SAFE_TOP_H    = 40;
-const LANE_H        = 44;
-const DIVIDER_H     = 24;
-const SAFE_BOT_H    = 64;
-const NUM_LANES     = 4;
+const SAFE_TOP_H  = 40;
+const LANE_H      = 44;
+const DIVIDER_H   = 24;
+const SAFE_BOT_H  = 64;
+const NLANES      = 4;
 
-const SAFE_TOP_Y    = 0;
-const LANES_TOP_Y   = SAFE_TOP_H;                          // 40
-const DIVIDER_Y     = LANES_TOP_Y + NUM_LANES * LANE_H;   // 216
-const LANES_BOT_Y   = DIVIDER_Y + DIVIDER_H;              // 240
-const SAFE_BOT_Y    = LANES_BOT_Y + NUM_LANES * LANE_H;   // 416
+const SAFE_TOP_Y  = 0;
+const LANES_TOP_Y = SAFE_TOP_H;
+const DIVIDER_Y   = LANES_TOP_Y + NLANES * LANE_H;   // 216
+const LANES_BOT_Y = DIVIDER_Y   + DIVIDER_H;          // 240
+const SAFE_BOT_Y  = LANES_BOT_Y + NLANES * LANE_H;   // 416
 
-// Lane center Y positions
-function laneCenter(i) {
-  // i: 0-3 = top lanes, 4-7 = bottom lanes
-  if (i < 4) return LANES_TOP_Y + i * LANE_H + LANE_H / 2;
-  return LANES_BOT_Y + (i - 4) * LANE_H + LANE_H / 2;
+// Lane center Y
+// Bottom: Lane 0 = bottommost row, Lane 3 = closest to divider
+// Top:    Lane 0 = topmost row,    Lane 3 = closest to divider
+function laneCY(group, lane) {
+  if (group === 'bot')
+    return LANES_BOT_Y + (NLANES - 1 - lane) * LANE_H + LANE_H / 2;
+  return LANES_TOP_Y + lane * LANE_H + LANE_H / 2;
 }
 
-// ─── ATARI PALETTE ────────────────────────────────────────
-const C = {
-  grassTop:    '#3a7a20',
-  grassBot:    '#2e6018',
-  grassStripe: '#4a9a28',
-  road:        '#383838',
-  roadAlt:     '#303030',
-  laneMarker:  '#cccccc',
-  divider:     '#e8c000',
-  dividerDark: '#b09000',
-  moto:        '#10d8f8',
-  motoDark:    '#0898b8',
-  hiScore:     '#f0c040',
-  flash:       '#ffffff',
+// ── CROSSROADS ──────────────────────────────────────────────────────
+const CX      = W / 2;
+const CROSS_W = 20;
+const LEFT_CX  = CX - 32;   // 288
+const RIGHT_CX = CX + 32;   // 352
+
+// ── PER-LANE PER-LEVEL CONFIG ────────────────────────────────────────
+// LANE_CONFIG[level][laneIdx]
+//   speed      : pixels per frame (30fps)
+//   interval   : frames between spawns
+//   firstDelay : frames before first spawn when level begins
+//
+// Applies identically to both bottom (→) and top (←) lanes.
+// ── PLACEHOLDER VALUES — tune to taste ──────────────────────────────
+const LANE_CONFIG = {
+  1: [
+    { speed:2.0, interval:180, firstDelay:0 },
+    { speed:2.0, interval:120,  firstDelay:0 },
+    { speed:3.0, interval:120,  firstDelay:30 },
+    { speed:4.0, interval:150,  firstDelay:0 },
+  ],
+  2: [
+    { speed:2.0, interval:150,  firstDelay:30 },
+    { speed:3.0, interval:120,  firstDelay:30 },
+    { speed:3.0, interval:90,  firstDelay:60  },
+    { speed:4.0, interval:150,  firstDelay:30 },
+  ],
+  3: [
+    { speed:2.5, interval:68,  firstDelay:12 },
+    { speed:2.0, interval:75,  firstDelay:30 },
+    { speed:3.0, interval:82,  firstDelay:6  },
+    { speed:2.3, interval:60,  firstDelay:45 },
+  ],
+  4: [
+    { speed:2.8, interval:62,  firstDelay:10 },
+    { speed:2.3, interval:68,  firstDelay:25 },
+    { speed:3.3, interval:74,  firstDelay:5  },
+    { speed:2.6, interval:55,  firstDelay:40 },
+  ],
+  5: [
+    { speed:3.0, interval:56,  firstDelay:8  },
+    { speed:2.5, interval:62,  firstDelay:20 },
+    { speed:3.6, interval:66,  firstDelay:4  },
+    { speed:2.9, interval:50,  firstDelay:35 },
+  ],
+  6: [
+    { speed:3.3, interval:50,  firstDelay:6  },
+    { speed:2.8, interval:56,  firstDelay:18 },
+    { speed:3.9, interval:60,  firstDelay:3  },
+    { speed:3.2, interval:45,  firstDelay:30 },
+  ],
+  7: [
+    { speed:3.6, interval:45,  firstDelay:5  },
+    { speed:3.1, interval:50,  firstDelay:15 },
+    { speed:4.2, interval:54,  firstDelay:3  },
+    { speed:3.5, interval:40,  firstDelay:25 },
+  ],
+  8: [
+    { speed:3.9, interval:40,  firstDelay:4  },
+    { speed:3.4, interval:44,  firstDelay:12 },
+    { speed:4.5, interval:48,  firstDelay:2  },
+    { speed:3.8, interval:36,  firstDelay:20 },
+  ],
+  9: [
+    { speed:4.2, interval:36,  firstDelay:3  },
+    { speed:3.7, interval:40,  firstDelay:10 },
+    { speed:4.8, interval:42,  firstDelay:2  },
+    { speed:4.1, interval:32,  firstDelay:15 },
+  ],
 };
 
-const TRAFFIC_COLORS = [
-  ['#e03018','#901808'],
-  ['#f0a000','#a06000'],
-  ['#28b840','#107820'],
-  ['#e050e0','#903090'],
-  ['#f0f030','#a0a010'],
-  ['#e07828','#904010'],
-  ['#30a8e0','#106890'],
-  ['#e84868','#901828'],
+// ── ATARI PALETTE ────────────────────────────────────────────────────
+const C = {
+  grassTop    : '#3a7a20',
+  grassTopAlt : '#2e6418',
+  grassBot    : '#2e6018',
+  grassBotAlt : '#245014',
+  road        : '#3a3a3a',
+  roadAlt     : '#2e2e2e',
+  laneMarker  : '#bbbbbb',
+  divider     : '#e8c000',
+  dividerDark : '#a08800',
+  crossroad   : '#505828',
+  crossEdge   : '#787840',
+  moto        : '#10d8f8',
+  motoDark    : '#0898b8',
+};
+
+const TCOLORS = [
+  ['#e03018','#801008'],
+  ['#f0a000','#905800'],
+  ['#28b840','#107020'],
+  ['#d050d0','#802880'],
+  ['#e8e020','#989010'],
+  ['#e07020','#904010'],
+  ['#2090d8','#105888'],
+  ['#e04060','#901030'],
 ];
 
-// ─── TRAFFIC LANES ────────────────────────────────────────
-// Top 4 lanes: go RIGHT (+x). Bottom 4 lanes: go LEFT (-x).
-let trafficLanes = [];
+// ── TRAFFIC ──────────────────────────────────────────────────────────
+let laneObjs = [];
 
-function buildTraffic() {
-  trafficLanes = [];
-  for (let i = 0; i < 8; i++) {
-    const isTop = i < 4;
-    const dir = isTop ? 1 : -1; // 1=right, -1=left
-    const baseSpeed = 1.2 + Math.random() * 0.8 + level * 0.25;
-    const speed = Math.min(baseSpeed, 5.5) * dir;
-    const cy = laneCenter(i);
-    const interval = 80 + Math.floor(Math.random() * 60) - level * 5;
-    trafficLanes.push({
-      dir, speed, cy,
-      cars: [],
-      spawnTimer: Math.floor(Math.random() * 80),
-      spawnInterval: Math.max(35, interval),
-      colorIdx: (i * 3 + Math.floor(Math.random() * 3)) % TRAFFIC_COLORS.length,
+function makeLaneObjs() {
+  laneObjs = [];
+  for (let i = 0; i < NLANES; i++) {
+    const cfg = LANE_CONFIG[gameLevel][i];
+    // Bottom lane i — goes RIGHT
+    laneObjs.push({
+      group   : 'bot', laneIdx: i, dir: 1,
+      cy      : laneCY('bot', i),
+      speed   : cfg.speed,
+      interval: cfg.interval,
+      timer   : -cfg.firstDelay,
+      cars    : [],
+      colorOff: i * 2,
+    });
+    // Top lane i — goes LEFT (mirror)
+    laneObjs.push({
+      group   : 'top', laneIdx: i, dir: -1,
+      cy      : laneCY('top', i),
+      speed   : cfg.speed,
+      interval: cfg.interval,
+      timer   : -cfg.firstDelay,
+      cars    : [],
+      colorOff: i * 2 + 1,
     });
   }
 }
 
-function spawnCar(lane) {
-  const cIdx = (lane.colorIdx + Math.floor(Math.random() * 2)) % TRAFFIC_COLORS.length;
-  const carW = 48 + Math.floor(Math.random() * 20);
-  const carH = 22;
-  const x = lane.dir > 0 ? -carW - 4 : W + 4;
-  lane.cars.push({
-    x, y: lane.cy - carH / 2,
-    w: carW, h: carH,
-    colors: TRAFFIC_COLORS[cIdx],
+function applyLevelToLanes() {
+  laneObjs.forEach(lo => {
+    const cfg  = LANE_CONFIG[gameLevel][lo.laneIdx];
+    lo.speed   = cfg.speed;
+    lo.interval = cfg.interval;
+    // Cars already on screen immediately adopt new speed
+    lo.cars.forEach(c => c.speed = cfg.speed * lo.dir);
+  });
+}
+
+function spawnCar(lo) {
+  const ci = (lo.colorOff + Math.floor(Math.random() * 2)) % TCOLORS.length;
+  const cw = 44 + Math.floor(Math.random() * 20);
+  const ch = 22;
+  const x  = lo.dir > 0 ? -cw - 4 : W + 4;
+  lo.cars.push({
+    x, y: lo.cy - ch / 2,
+    w: cw, h: ch,
+    col  : TCOLORS[ci],
+    speed: lo.speed * lo.dir,
   });
 }
 
 function updateTraffic() {
-  trafficLanes.forEach(lane => {
-    lane.spawnTimer++;
-    if (lane.spawnTimer >= lane.spawnInterval) {
-      lane.spawnTimer = 0;
-      spawnCar(lane);
-    }
-    lane.cars.forEach(c => c.x += lane.speed);
-    lane.cars = lane.cars.filter(c => c.x > -80 && c.x < W + 80);
+  laneObjs.forEach(lo => {
+    lo.timer++;
+    if (lo.timer >= lo.interval) { lo.timer = 0; spawnCar(lo); }
+    lo.cars.forEach(c => c.x += c.speed);
+    lo.cars = lo.cars.filter(c => c.x > -100 && c.x < W + 100);
   });
 }
 
-function drawTrafficCar(c, colors) {
+function drawCar(c) {
   const x = snap(c.x), y = snap(c.y), w = c.w, h = c.h;
-  // Body
-  ctx.fillStyle = colors[0];
+  ctx.fillStyle = c.col[0];
   ctx.fillRect(x, y, w, h);
-  // Roof
-  ctx.fillStyle = colors[1];
-  ctx.fillRect(x + Math.floor(w*0.18), y + Math.floor(h*0.22),
-               Math.floor(w*0.64), Math.floor(h*0.56));
-  // Windshields (light blue tint)
-  ctx.fillStyle = 'rgba(180,220,255,0.5)';
-  ctx.fillRect(x + Math.floor(w*0.12), y + Math.floor(h*0.18),
-               Math.floor(w*0.22), Math.floor(h*0.64));
-  ctx.fillRect(x + Math.floor(w*0.66), y + Math.floor(h*0.18),
-               Math.floor(w*0.22), Math.floor(h*0.64));
-  // Wheels
+  ctx.fillStyle = c.col[1];
+  ctx.fillRect(x+~~(w*.18), y+~~(h*.22), ~~(w*.64), ~~(h*.55));
+  ctx.fillStyle = 'rgba(160,210,255,0.45)';
+  ctx.fillRect(x+~~(w*.10), y+~~(h*.18), ~~(w*.20), ~~(h*.62));
+  ctx.fillRect(x+~~(w*.70), y+~~(h*.18), ~~(w*.20), ~~(h*.62));
   ctx.fillStyle = '#111';
-  ctx.fillRect(x + 2,         y,         6, 4);
-  ctx.fillRect(x + w - 8,     y,         6, 4);
-  ctx.fillRect(x + 2,         y + h - 4, 6, 4);
-  ctx.fillRect(x + w - 8,     y + h - 4, 6, 4);
+  ctx.fillRect(x+2,     y,         6, 4);
+  ctx.fillRect(x+w-8,   y,         6, 4);
+  ctx.fillRect(x+2,     y+h-4,     6, 4);
+  ctx.fillRect(x+w-8,   y+h-4,     6, 4);
 }
 
 function drawAllTraffic() {
-  trafficLanes.forEach(lane => {
-    lane.cars.forEach(c => drawTrafficCar(c, c.colors));
-  });
+  laneObjs.forEach(lo => lo.cars.forEach(drawCar));
 }
 
-// ─── ROAD DRAWING ─────────────────────────────────────────
-function drawGrass(y, h, light, dark) {
-  // Alternating stripes for Atari texture
-  ctx.fillStyle = light;
-  ctx.fillRect(0, y, W, h);
-  ctx.fillStyle = dark;
-  for (let sy = y; sy < y + h; sy += 8) {
-    ctx.fillRect(0, sy, W, 4);
-  }
+// ── ROAD ─────────────────────────────────────────────────────────────
+function drawStripes(y, h, c1, c2, sh) {
+  ctx.fillStyle = c1; ctx.fillRect(0, y, W, h);
+  ctx.fillStyle = c2;
+  for (let sy = y; sy < y+h; sy += sh*2) ctx.fillRect(0, sy, W, sh);
 }
 
 function drawRoad() {
-  // Safe zones (grass)
-  drawGrass(SAFE_TOP_Y, SAFE_TOP_H, C.grassTop, C.grassStripe);
-  drawGrass(SAFE_BOT_Y, SAFE_BOT_H, C.grassBot, '#246014');
+  drawStripes(SAFE_TOP_Y, SAFE_TOP_H, C.grassTop, C.grassTopAlt, 4);
+  drawStripes(SAFE_BOT_Y, SAFE_BOT_H, C.grassBot, C.grassBotAlt, 4);
 
-  // Top road block
-  ctx.fillStyle = C.road;
-  ctx.fillRect(0, LANES_TOP_Y, W, NUM_LANES * LANE_H);
-
-  // Bottom road block
-  ctx.fillStyle = C.road;
-  ctx.fillRect(0, LANES_BOT_Y, W, NUM_LANES * LANE_H);
-
-  // Alternate lane shading
-  for (let i = 0; i < 4; i++) {
-    if (i % 2 === 1) {
-      ctx.fillStyle = C.roadAlt;
-      ctx.fillRect(0, LANES_TOP_Y + i * LANE_H, W, LANE_H);
-      ctx.fillRect(0, LANES_BOT_Y + i * LANE_H, W, LANE_H);
-    }
+  for (let i = 0; i < NLANES; i++) {
+    ctx.fillStyle = i % 2 === 0 ? C.road : C.roadAlt;
+    ctx.fillRect(0, LANES_TOP_Y + i*LANE_H, W, LANE_H);
+    ctx.fillRect(0, LANES_BOT_Y + i*LANE_H, W, LANE_H);
   }
 
-  // Lane divider dashes (white dashes between lanes)
   ctx.fillStyle = C.laneMarker;
-  for (let i = 1; i < 4; i++) {
-    const yTop = LANES_TOP_Y + i * LANE_H;
-    const yBot = LANES_BOT_Y + i * LANE_H;
+  for (let i = 1; i < NLANES; i++) {
+    const yT = LANES_TOP_Y + i*LANE_H, yB = LANES_BOT_Y + i*LANE_H;
     for (let x = 0; x < W; x += 28) {
-      ctx.fillRect(x, yTop - 1, 18, 2);
-      ctx.fillRect(x, yBot - 1, 18, 2);
+      ctx.fillRect(x, yT-1, 18, 2);
+      ctx.fillRect(x, yB-1, 18, 2);
     }
   }
 
-  // Road edge lines (solid white)
-  ctx.fillStyle = '#aaaaaa';
-  ctx.fillRect(0, LANES_TOP_Y,                      W, 2);
-  ctx.fillRect(0, LANES_TOP_Y + NUM_LANES * LANE_H - 2, W, 2);
-  ctx.fillRect(0, LANES_BOT_Y,                      W, 2);
-  ctx.fillRect(0, LANES_BOT_Y + NUM_LANES * LANE_H - 2, W, 2);
+  ctx.fillStyle = '#999';
+  ctx.fillRect(0, LANES_TOP_Y,                   W, 2);
+  ctx.fillRect(0, LANES_TOP_Y+NLANES*LANE_H-2,   W, 2);
+  ctx.fillRect(0, LANES_BOT_Y,                   W, 2);
+  ctx.fillRect(0, LANES_BOT_Y+NLANES*LANE_H-2,   W, 2);
 
-  // Center divider (yellow, chunky)
   ctx.fillStyle = C.divider;
   ctx.fillRect(0, DIVIDER_Y, W, DIVIDER_H);
-  // Divider hash marks (darker yellow)
   ctx.fillStyle = C.dividerDark;
-  for (let x = 0; x < W; x += 24) {
-    ctx.fillRect(x, DIVIDER_Y, 12, DIVIDER_H);
+  for (let x = 0; x < W; x += 24) ctx.fillRect(x, DIVIDER_Y, 12, DIVIDER_H);
+
+  // Crossroad paths over road and grass
+  for (const cx of [LEFT_CX, RIGHT_CX]) {
+    ctx.fillStyle = C.crossroad;
+    ctx.fillRect(snap(cx-CROSS_W/2), 0, CROSS_W, H);
+    ctx.fillStyle = C.crossEdge;
+    ctx.fillRect(snap(cx-CROSS_W/2),     0, 2, H);
+    ctx.fillRect(snap(cx+CROSS_W/2-2),   0, 2, H);
   }
 }
 
-// ─── PLAYER (MOTORCYCLE) ──────────────────────────────────
-const MOTO_W = 10;
-const MOTO_H = 20;
+// ── LEVEL INDICATOR (upper-left of game canvas) ──────────────────────
+function drawLevelIndicator() {
+  ctx.fillStyle = '#f0c040';
+  ctx.font = 'bold 14px "Courier New"';
+  ctx.textAlign = 'left';
+  ctx.fillText('L' + gameLevel, 6, 16);
+}
 
-let player = {
-  x: W / 2,
-  y: SAFE_BOT_Y + SAFE_BOT_H / 2,
-  speed: 2.5,
-};
+// ── PLAYER ───────────────────────────────────────────────────────────
+const MW = 10, MH = 20;
+let player = {};
+let lapStarted = false, crossedBotLanes = false,
+    crossedDivider = false, crossedTopLanes = false;
 
 function resetPlayer() {
-  player.x = W / 2;
-  player.y = SAFE_BOT_Y + SAFE_BOT_H / 2;
+  player = {
+    x: LEFT_CX, y: SAFE_BOT_Y + SAFE_BOT_H * 0.55,
+    speed: 4.0, crossX: LEFT_CX,
+  };
+  lapStarted = crossedBotLanes = crossedDivider = crossedTopLanes = false;
 }
 
 function drawMoto(x, y) {
-  const px = snap(x - MOTO_W / 2);
-  const py = snap(y - MOTO_H / 2);
-  const w = MOTO_W, h = MOTO_H;
-
-  // Wheels
-  ctx.fillStyle = '#222';
-  ctx.fillRect(px + 1, py,         w - 2, 4); // front wheel
-  ctx.fillRect(px + 1, py + h - 4, w - 2, 4); // rear wheel
-
-  // Body / frame
+  const px = snap(x-MW/2), py = snap(y-MH/2);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(px+1, py+MH-5, MW-2, 5);
+  ctx.fillRect(px+1, py,       MW-2, 5);
   ctx.fillStyle = C.moto;
-  ctx.fillRect(px + 2, py + 3, w - 4, h - 6);
-
-  // Rider
+  ctx.fillRect(px+2, py+4, MW-4, MH-8);
   ctx.fillStyle = C.motoDark;
-  ctx.fillRect(px + 2, py + 4, w - 4, 6);
-
-  // Headlight
-  ctx.fillStyle = '#ffffaa';
-  ctx.fillRect(px + 3, py + 1, w - 6, 2);
+  ctx.fillRect(px+2, py+5, MW-4, 7);
+  ctx.fillStyle = '#ffff99';
+  ctx.fillRect(px+3, py+1, MW-6, 3);
 }
 
 function updatePlayer() {
-  const spd = player.speed;
-  if (keys['ArrowLeft'])  player.x -= spd;
-  if (keys['ArrowRight']) player.x += spd;
-  if (keys['ArrowUp'])    player.y -= spd;
-  if (keys['ArrowDown'])  player.y += spd;
-
-  // Clamp to screen
-  player.x = Math.max(MOTO_W/2 + 1, Math.min(W - MOTO_W/2 - 1, player.x));
-  player.y = Math.max(MOTO_H/2 + 1, Math.min(H - MOTO_H/2 - 1, player.y));
+  if (keys['ArrowUp'])   player.y -= player.speed;
+  if (keys['ArrowDown']) player.y += player.speed;
+  player.x = player.crossX;
+  player.y = Math.max(MH/2+1, Math.min(H-MH/2-1, player.y));
 }
 
-// ─── COLLISION ────────────────────────────────────────────
+// ── COLLISION ────────────────────────────────────────────────────────
 function checkCollision() {
-  const px = player.x - MOTO_W/2 + 2;
-  const py = player.y - MOTO_H/2 + 2;
-  const pw = MOTO_W - 4;
-  const ph = MOTO_H - 4;
-  for (let lane of trafficLanes) {
-    for (let c of lane.cars) {
-      if (px < c.x + c.w && px + pw > c.x &&
-          py < c.y + c.h && py + ph > c.y) {
+  const px = player.x-MW/2+2, py = player.y-MH/2+2;
+  const pw = MW-4, ph = MH-4;
+  for (const lo of laneObjs)
+    for (const c of lo.cars)
+      if (px < c.x+c.w && px+pw > c.x && py < c.y+c.h && py+ph > c.y)
         return true;
-      }
-    }
-  }
   return false;
 }
 
-// ─── LAP LOGIC ────────────────────────────────────────────
-// Reaching the top safe zone = +1 lap, player resets to bottom
-let lapCrossedTop = false;
-
-function checkLap() {
-  if (player.y - MOTO_H/2 <= SAFE_TOP_Y + SAFE_TOP_H) {
-    if (!lapCrossedTop) {
-      lapCrossedTop = true;
-      laps++;
-      if (laps > hiScore) hiScore = laps;
-      document.getElementById('lapDisplay').textContent = laps;
-      document.getElementById('hiDisplay').textContent = hiScore;
-      beep(880, 0.08); beep(1100, 0.08); beep(1320, 0.12);
-      resetPlayer();
-      lapCrossedTop = false;
-    }
-  } else {
-    lapCrossedTop = false;
-  }
+// ── LAP ──────────────────────────────────────────────────────────────
+function getZone(y) {
+  if (y >= SAFE_BOT_Y)                     return 'botSafe';
+  if (y >= LANES_BOT_Y && y < SAFE_BOT_Y)  return 'botLanes';
+  if (y >= DIVIDER_Y   && y < LANES_BOT_Y) return 'divider';
+  if (y >= LANES_TOP_Y && y < DIVIDER_Y)   return 'topLanes';
+  return 'topSafe';
 }
 
-// ─── GAME STATE ───────────────────────────────────────────
-let state = 'title'; // title | playing | dead
-let laps = 0;
-let hiScore = 0;
-let level = 1;
-let flashTimer = 0;
+function checkLap() {
+  const zone = getZone(player.y);
+  if (!lapStarted) { if (zone !== 'botSafe') lapStarted = true; return; }
+  if (zone === 'botLanes' || zone === 'divider' || zone === 'topLanes') crossedBotLanes = true;
+  if (zone === 'divider'  || zone === 'topLanes') crossedDivider = true;
+  if (zone === 'topLanes') crossedTopLanes = true;
+  if (zone === 'topSafe' && crossedBotLanes && crossedDivider && crossedTopLanes) {
+    laps++;
+    if (laps > hiScore) hiScore = laps;
+    document.getElementById('lapDisplay').textContent = laps;
+    document.getElementById('hiDisplay').textContent  = hiScore;
+    beep(880,0.07); beep(1100,0.07); beep(1320,0.10); beep(1760,0.14);
+    resetPlayer();
+  }
+  if (zone === 'botSafe')
+    lapStarted = crossedBotLanes = crossedDivider = crossedTopLanes = false;
+}
 
-// Audio
+// ── LEVEL TIMER ──────────────────────────────────────────────────────
+let gameLevel  = 1;
+let frameCount = 0;
+
+function updateLevel() {
+  frameCount++;
+  const newLevel = Math.min(MAX_LEVEL, Math.floor(frameCount / FRAMES_PER_LEVEL) + 1);
+  if (newLevel !== gameLevel) {
+    gameLevel = newLevel;
+    applyLevelToLanes();
+    beep(440,0.05); beep(550,0.08);
+  }
+  if (frameCount >= FRAMES_PER_LEVEL * MAX_LEVEL) endGame();
+}
+
+// ── GAME STATE ───────────────────────────────────────────────────────
+let state = 'title', laps = 0, hiScore = 0, flashTimer = 0;
+
+function startGame() {
+  laps = 0; gameLevel = 1; frameCount = 0;
+  document.getElementById('lapDisplay').textContent = '0';
+  document.getElementById('hiDisplay').textContent  = hiScore;
+  document.getElementById('footer').textContent     = '';
+  resetPlayer();
+  makeLaneObjs();
+  state = 'playing';
+}
+
+function killPlayer() {
+  state = 'dead'; flashTimer = 20;
+  beep(280,0.05,'sawtooth');
+  setTimeout(()=>beep(180,0.05,'sawtooth'),60);
+  setTimeout(()=>beep(110,0.30,'sawtooth',0.22),120);
+  document.getElementById('footer').textContent = 'PRESS SPACE TO PLAY AGAIN';
+}
+
+function endGame() {
+  state = 'gameover';
+  beep(440,0.1); beep(330,0.1); beep(220,0.3,'sawtooth',0.18);
+  document.getElementById('footer').textContent = 'PRESS SPACE TO PLAY AGAIN';
+}
+
+// ── AUDIO ────────────────────────────────────────────────────────────
 let audioCtx = null;
 function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 }
 function beep(freq, dur, type='square', vol=0.12) {
   if (!audioCtx) return;
   try {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.connect(g); g.connect(audioCtx.destination);
-    o.type = type; o.frequency.value = freq;
-    g.gain.setValueAtTime(vol, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    o.start(); o.stop(audioCtx.currentTime + dur);
-  } catch(e) {}
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+  } catch(e){}
 }
 
-function startGame() {
-  laps = 0;
-  level = 1;
-  lapCrossedTop = false;
-  document.getElementById('lapDisplay').textContent = '0';
-  document.getElementById('hiDisplay').textContent = hiScore;
-  resetPlayer();
-  buildTraffic();
-  state = 'playing';
-  document.getElementById('footer').textContent = '';
-}
-
-function killPlayer() {
-  state = 'dead';
-  flashTimer = 18;
-  beep(300, 0.05,'sawtooth'); beep(200, 0.05,'sawtooth'); beep(120, 0.3,'sawtooth', 0.2);
-  document.getElementById('footer').textContent = 'PRESS SPACE TO PLAY AGAIN';
-}
-
-// ─── INPUT ────────────────────────────────────────────────
+// ── INPUT ────────────────────────────────────────────────────────────
 const keys = {};
 document.addEventListener('keydown', e => {
   keys[e.key] = true;
-  if (e.key === ' ') {
+  if (e.key===' ') {
     initAudio();
-    if (state === 'title' || state === 'dead') startGame();
+    if (state==='title'||state==='dead'||state==='gameover') startGame();
     e.preventDefault();
   }
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  if (['ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
 });
-document.addEventListener('keyup', e => { keys[e.key] = false; });
+document.addEventListener('keyup', e => { keys[e.key]=false; });
 
-// ─── HELPERS ──────────────────────────────────────────────
+// ── HELPERS ──────────────────────────────────────────────────────────
 function snap(v) { return Math.round(v); }
 
-// ─── SCREENS ──────────────────────────────────────────────
+// ── SCREENS ──────────────────────────────────────────────────────────
 function drawTitle() {
-  // Background
   drawRoad();
-  // Dim overlay
-  ctx.fillStyle = 'rgba(0,0,0,0.62)';
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.textAlign = 'center';
-
-  ctx.fillStyle = '#f0c040';
-  ctx.font = 'bold 52px "Courier New"';
-  ctx.fillText('CROSSROAD', W/2, 160);
-
-  ctx.fillStyle = '#e04020';
-  ctx.font = '18px "Courier New"';
-  ctx.fillText('CROSS THE HIGHWAY — MAKE LAPS', W/2, 210);
-
-  ctx.fillStyle = '#aaaaaa';
-  ctx.font = '15px "Courier New"';
-  ctx.fillText('ARROW KEYS TO MOVE', W/2, 280);
-  ctx.fillText('AVOID ALL TRAFFIC', W/2, 305);
-  ctx.fillText('REACH THE TOP ZONE TO SCORE A LAP', W/2, 330);
-
-  ctx.fillStyle = '#f0c040';
-  ctx.font = '17px "Courier New"';
-  if (Math.floor(Date.now()/500) % 2 === 0)
-    ctx.fillText('PRESS SPACE TO START', W/2, 400);
+  drawMoto(LEFT_CX,  SAFE_BOT_Y+32);
+  drawMoto(RIGHT_CX, SAFE_BOT_Y+32);
+  ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.fillStyle='#f0c040'; ctx.font='bold 54px "Courier New"';
+  ctx.fillText('CROSSROADS',W/2,155);
+  ctx.fillStyle='#e04020'; ctx.font='17px "Courier New"';
+  ctx.fillText('CROSS ALL 8 LANES TO SCORE A LAP',W/2,205);
+  ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
+  ctx.fillText('UP / DOWN ARROWS TO MOVE',W/2,272);
+  ctx.fillText('AVOID THE TRAFFIC',W/2,296);
+  ctx.fillText('9 LEVELS  —  20 SECONDS EACH',W/2,320);
+  if (Math.floor(Date.now()/500)%2===0) {
+    ctx.fillStyle='#f0c040'; ctx.font='17px "Courier New"';
+    ctx.fillText('PRESS SPACE TO START',W/2,400);
+  }
 }
 
 function drawDeadOverlay() {
-  if (flashTimer > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${flashTimer / 18})`;
-    ctx.fillRect(0, 0, W, H);
-    flashTimer--;
-    return;
+  if (flashTimer>0) {
+    ctx.fillStyle=`rgba(255,255,255,${flashTimer/20})`; ctx.fillRect(0,0,W,H);
+    flashTimer--; return;
   }
-  ctx.fillStyle = 'rgba(0,0,0,0.68)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#e04020';
-  ctx.font = 'bold 44px "Courier New"';
-  ctx.fillText('WIPEOUT!', W/2, 190);
-  ctx.fillStyle = '#f0c040';
-  ctx.font = '22px "Courier New"';
-  ctx.fillText('LAPS: ' + laps, W/2, 250);
-  ctx.fillText('BEST: ' + hiScore, W/2, 285);
-  if (Math.floor(Date.now()/500) % 2 === 0) {
-    ctx.fillStyle = '#aaaaaa';
-    ctx.font = '15px "Courier New"';
-    ctx.fillText('PRESS SPACE TO TRY AGAIN', W/2, 350);
+  ctx.fillStyle='rgba(0,0,0,0.70)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.fillStyle='#e04020'; ctx.font='bold 46px "Courier New"';
+  ctx.fillText('WIPEOUT!',W/2,185);
+  ctx.fillStyle='#f0c040'; ctx.font='22px "Courier New"';
+  ctx.fillText('LAPS: '+laps,W/2,248);
+  ctx.fillText('BEST: '+hiScore,W/2,282);
+  if (Math.floor(Date.now()/500)%2===0) {
+    ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
+    ctx.fillText('PRESS SPACE TO TRY AGAIN',W/2,348);
   }
 }
 
-// Scanlines
+function drawGameOverOverlay() {
+  ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.fillStyle='#f0c040'; ctx.font='bold 42px "Courier New"';
+  ctx.fillText('GAME OVER',W/2,170);
+  ctx.font='20px "Courier New"';
+  ctx.fillText('ALL 9 LEVELS COMPLETE',W/2,220);
+  ctx.font='22px "Courier New"';
+  ctx.fillText('LAPS: '+laps,W/2,275);
+  ctx.fillText('BEST: '+hiScore,W/2,308);
+  if (Math.floor(Date.now()/500)%2===0) {
+    ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
+    ctx.fillText('PRESS SPACE TO PLAY AGAIN',W/2,370);
+  }
+}
+
 function drawScanlines() {
-  ctx.fillStyle = 'rgba(0,0,0,0.10)';
-  for (let y = 0; y < H; y += 2) {
-    ctx.fillRect(0, y, W, 1);
-  }
+  ctx.fillStyle='rgba(0,0,0,0.09)';
+  for (let y=0; y<H; y+=2) ctx.fillRect(0,y,W,1);
 }
 
-// ─── MAIN LOOP ────────────────────────────────────────────
-function loop() {
+// ── 30 FPS LOOP ──────────────────────────────────────────────────────
+let lastTime = 0;
+
+function loop(ts) {
   requestAnimationFrame(loop);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
+  if (ts - lastTime < FRAME_MS - 1) return;
+  lastTime = ts;
 
-  if (state === 'title') {
-    drawTitle();
-    drawScanlines();
-    return;
-  }
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
 
-  // Draw world
+  if (state==='title') { drawTitle(); drawScanlines(); return; }
+
   drawRoad();
-  updateTraffic();
-  drawAllTraffic();
-  drawMoto(player.x, player.y);
 
-  if (state === 'playing') {
+  if (state==='playing') {
+    updateTraffic();
     updatePlayer();
     checkLap();
+    updateLevel();
     if (checkCollision()) killPlayer();
+  } else {
+    updateTraffic(); // traffic keeps moving on dead/gameover
   }
 
-  if (state === 'dead') {
-    drawDeadOverlay();
-  }
+  drawAllTraffic();
+  drawMoto(player.x, player.y);
+  drawLevelIndicator();
+
+  if (state==='dead')     drawDeadOverlay();
+  if (state==='gameover') drawGameOverOverlay();
 
   drawScanlines();
 }

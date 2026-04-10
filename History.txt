@@ -20,3 +20,21 @@ This game is playable with this little guidance. It's too difficult and there
 is plenty to change. But I am amazed at the quality for just 15 minutes.
 More details and refinement to follow.
 
+
+version 01.02	21 minutes dev	6 minutes code gen	2 minutes test		44 minutes total
+
+Changed the name from Crossroad to Crossroads. After all, there will multiple
+roads. Think of a loop of sorts: up one road, down the other.
+Add the crossroads. Two small lanes for the player's motorcycle, from top to
+bottom.
+The original version of the game allowed lateral movement. That's not what's 
+intended. Limited to only up and down cursor keys.
+Added some significant changes to add more details:
+* The top 4 layers are a mirror image of the bottom 4.
+* There will be 9 levels to the game. Each level last 20 seconds, nothing to
+accomplish, just pure time for each level.
+* The game is over after the 9 levels have passed (aka 3 minutes)
+* The speed of the cars will be configurable. It will be by lane, by level.
+This is the first glimpse of the game. Some changes remain, but primarily
+focused on details, not featured.
+
