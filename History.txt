@@ -38,3 +38,17 @@ accomplish, just pure time for each level.
 This is the first glimpse of the game. Some changes remain, but primarily
 focused on details, not featured.
 
+
+Version 01.03	12 minutes dev	4 minutes code gen	2 minutes test		1 hour 2
+
+To start, a bit of fine tuning. The speed of the motorcycle is set to 4 pixels
+per second. The next thing was the main change for this version: implementing the 
+loop. The player will start at the bottom of the left crossroad. When they get to
+the top, the player is automatically moved off the top of the screen and into the
+right lane. The player now travels down. When it to the bottom, the player is
+automatically moved off the bottom of the screen and back into the left lane.
+Finally was switch from 1 player life to unlimited life. If the player gets hit 
+by a car, the game pauses for 500ms, then moves the motorcycle to the start of 
+the current lane.
+
+

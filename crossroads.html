@@ -4,47 +4,46 @@
 <meta charset="UTF-8">
 <title>CROSSROADS</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    background: #111;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Courier New', monospace;
-    user-select: none;
+    background:#111;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    font-family:'Courier New',monospace;
+    user-select:none;
   }
   #hud {
-    width: 640px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #f0c040;
-    font-size: 20px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    padding: 6px 8px;
+    width:640px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    color:#f0c040;
+    font-size:20px;
+    letter-spacing:4px;
+    text-transform:uppercase;
+    padding:6px 8px;
   }
   canvas {
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+    display:block;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
   }
   #footer {
-    width: 640px;
-    text-align: center;
-    color: #888;
-    font-size: 13px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    padding: 6px 4px;
-    height: 24px;
+    width:640px;
+    text-align:center;
+    color:#888;
+    font-size:13px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    padding:6px 4px;
+    height:24px;
   }
 </style>
 </head>
 <body>
-
 <div id="hud">
   <span>LAPS:&nbsp;<span id="lapDisplay">0</span></span>
   <span>CROSSROADS</span>
@@ -55,7 +54,7 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  CROSSROADS — Atari 2600 style, 30fps, 9 levels
+//  CROSSROADS — Atari 2600 style, 30fps, 9 levels, figure-8 laps
 // ═══════════════════════════════════════════════════════════════════
 
 const canvas = document.getElementById('c');
@@ -64,10 +63,11 @@ ctx.imageSmoothingEnabled = false;
 
 const W = 640, H = 480;
 const FPS              = 30;
-const FRAME_MS         = 1000 / FPS;       // ~33.33ms per frame
+const FRAME_MS         = 1000 / FPS;
 const LEVEL_SECS       = 20;
 const MAX_LEVEL        = 9;
-const FRAMES_PER_LEVEL = LEVEL_SECS * FPS; // 600 frames per level
+const FRAMES_PER_LEVEL = LEVEL_SECS * FPS;  // 600
+const HIT_FREEZE_MS    = 500;
 
 // ── LAYOUT ──────────────────────────────────────────────────────────
 //   0.. 39  safe top     40px
@@ -83,14 +83,14 @@ const SAFE_BOT_H  = 64;
 const NLANES      = 4;
 
 const SAFE_TOP_Y  = 0;
-const LANES_TOP_Y = SAFE_TOP_H;
-const DIVIDER_Y   = LANES_TOP_Y + NLANES * LANE_H;   // 216
-const LANES_BOT_Y = DIVIDER_Y   + DIVIDER_H;          // 240
-const SAFE_BOT_Y  = LANES_BOT_Y + NLANES * LANE_H;   // 416
+const LANES_TOP_Y = SAFE_TOP_H;                        // 40
+const DIVIDER_Y   = LANES_TOP_Y + NLANES * LANE_H;    // 216
+const LANES_BOT_Y = DIVIDER_Y   + DIVIDER_H;           // 240
+const SAFE_BOT_Y  = LANES_BOT_Y + NLANES * LANE_H;    // 416
 
 // Lane center Y
-// Bottom: Lane 0 = bottommost row, Lane 3 = closest to divider
-// Top:    Lane 0 = topmost row,    Lane 3 = closest to divider
+// Bottom: Lane 0 = bottommost (near safe zone), Lane 3 = nearest divider
+// Top:    Lane 0 = topmost (near safe zone),    Lane 3 = nearest divider
 function laneCY(group, lane) {
   if (group === 'bot')
     return LANES_BOT_Y + (NLANES - 1 - lane) * LANE_H + LANE_H / 2;
@@ -98,18 +98,19 @@ function laneCY(group, lane) {
 }
 
 // ── CROSSROADS ──────────────────────────────────────────────────────
-const CX      = W / 2;
-const CROSS_W = 20;
+const CX       = W / 2;
+const CROSS_W  = 20;
 const LEFT_CX  = CX - 32;   // 288
 const RIGHT_CX = CX + 32;   // 352
 
+// Y threshold: "clear of traffic" — just outside the road blocks
+const CLEAR_TOP_Y = SAFE_TOP_Y + SAFE_TOP_H / 2;        // 20 — well inside top safe zone
+const CLEAR_BOT_Y = SAFE_BOT_Y + SAFE_BOT_H / 2;        // 448 — well inside bottom safe zone
+
 // ── PER-LANE PER-LEVEL CONFIG ────────────────────────────────────────
-// LANE_CONFIG[level][laneIdx]
-//   speed      : pixels per frame (30fps)
-//   interval   : frames between spawns
-//   firstDelay : frames before first spawn when level begins
-//
-// Applies identically to both bottom (→) and top (←) lanes.
+// speed      : pixels per frame (30fps)
+// interval   : frames between car spawns
+// firstDelay : frames before first spawn when level starts
 // ── PLACEHOLDER VALUES — tune to taste ──────────────────────────────
 const LANE_CONFIG = {
   1: [
@@ -125,46 +126,46 @@ const LANE_CONFIG = {
     { speed:4.0, interval:150,  firstDelay:30 },
   ],
   3: [
-    { speed:2.5, interval:68,  firstDelay:12 },
-    { speed:2.0, interval:75,  firstDelay:30 },
-    { speed:3.0, interval:82,  firstDelay:6  },
-    { speed:2.3, interval:60,  firstDelay:45 },
+    { speed:3.0, interval:150,  firstDelay:60 },
+    { speed:3.0, interval:90,  firstDelay:90 },
+    { speed:4.0, interval:120,  firstDelay:30  },
+    { speed:4.0, interval:90,  firstDelay:120 },
   ],
   4: [
-    { speed:2.8, interval:62,  firstDelay:10 },
-    { speed:2.3, interval:68,  firstDelay:25 },
-    { speed:3.3, interval:74,  firstDelay:5  },
-    { speed:2.6, interval:55,  firstDelay:40 },
+    { speed:3.0, interval:90,  firstDelay:30 },
+    { speed:4.0, interval:120,  firstDelay:120 },
+    { speed:4.0, interval:90,  firstDelay:90  },
+    { speed:5.0, interval:120,  firstDelay:60 },
   ],
   5: [
-    { speed:3.0, interval:56,  firstDelay:8  },
-    { speed:2.5, interval:62,  firstDelay:20 },
-    { speed:3.6, interval:66,  firstDelay:4  },
-    { speed:2.9, interval:50,  firstDelay:35 },
+    { speed:4.0, interval:120,  firstDelay:90  },
+    { speed:4.0, interval:90,  firstDelay:30 },
+    { speed:5.0, interval:120,  firstDelay:120  },
+    { speed:5.0, interval:90,  firstDelay:60 },
   ],
   6: [
-    { speed:3.3, interval:50,  firstDelay:6  },
-    { speed:2.8, interval:56,  firstDelay:18 },
-    { speed:3.9, interval:60,  firstDelay:3  },
-    { speed:3.2, interval:45,  firstDelay:30 },
+    { speed:4.0, interval:90,  firstDelay:30  },
+    { speed:5.0, interval:120,  firstDelay:90 },
+    { speed:5.0, interval:90,  firstDelay:120  },
+    { speed:6.0, interval:120,  firstDelay:60 },
   ],
   7: [
-    { speed:3.6, interval:45,  firstDelay:5  },
-    { speed:3.1, interval:50,  firstDelay:15 },
-    { speed:4.2, interval:54,  firstDelay:3  },
-    { speed:3.5, interval:40,  firstDelay:25 },
+    { speed:4.0, interval:90,  firstDelay:30  },
+    { speed:5.0, interval:90,  firstDelay:60 },
+    { speed:6.0, interval:120,  firstDelay:90  },
+    { speed:7.0, interval:90,  firstDelay:120 },
   ],
   8: [
-    { speed:3.9, interval:40,  firstDelay:4  },
-    { speed:3.4, interval:44,  firstDelay:12 },
-    { speed:4.5, interval:48,  firstDelay:2  },
-    { speed:3.8, interval:36,  firstDelay:20 },
+    { speed:4.0, interval:90,  firstDelay:30  },
+    { speed:5.0, interval:60,  firstDelay:60 },
+    { speed:6.0, interval:90,  firstDelay:90  },
+    { speed:7.0, interval:60,  firstDelay:120 },
   ],
   9: [
-    { speed:4.2, interval:36,  firstDelay:3  },
-    { speed:3.7, interval:40,  firstDelay:10 },
-    { speed:4.8, interval:42,  firstDelay:2  },
-    { speed:4.1, interval:32,  firstDelay:15 },
+    { speed:4.0, interval:45,  firstDelay:30  },
+    { speed:5.0, interval:60,  firstDelay:60 },
+    { speed:6.0, interval:60,  firstDelay:90  },
+    { speed:7.0, interval:45,  firstDelay:120 },
   ],
 };
 
@@ -203,206 +204,267 @@ function makeLaneObjs() {
   laneObjs = [];
   for (let i = 0; i < NLANES; i++) {
     const cfg = LANE_CONFIG[gameLevel][i];
-    // Bottom lane i — goes RIGHT
     laneObjs.push({
-      group   : 'bot', laneIdx: i, dir: 1,
-      cy      : laneCY('bot', i),
-      speed   : cfg.speed,
-      interval: cfg.interval,
-      timer   : -cfg.firstDelay,
-      cars    : [],
-      colorOff: i * 2,
+      group:'bot', laneIdx:i, dir:1,
+      cy:laneCY('bot',i), speed:cfg.speed,
+      interval:cfg.interval, timer:-cfg.firstDelay,
+      cars:[], colorOff:i*2,
     });
-    // Top lane i — goes LEFT (mirror)
     laneObjs.push({
-      group   : 'top', laneIdx: i, dir: -1,
-      cy      : laneCY('top', i),
-      speed   : cfg.speed,
-      interval: cfg.interval,
-      timer   : -cfg.firstDelay,
-      cars    : [],
-      colorOff: i * 2 + 1,
+      group:'top', laneIdx:i, dir:-1,
+      cy:laneCY('top',i), speed:cfg.speed,
+      interval:cfg.interval, timer:-cfg.firstDelay,
+      cars:[], colorOff:i*2+1,
     });
   }
 }
 
 function applyLevelToLanes() {
   laneObjs.forEach(lo => {
-    const cfg  = LANE_CONFIG[gameLevel][lo.laneIdx];
-    lo.speed   = cfg.speed;
+    const cfg   = LANE_CONFIG[gameLevel][lo.laneIdx];
+    lo.speed    = cfg.speed;
     lo.interval = cfg.interval;
-    // Cars already on screen immediately adopt new speed
     lo.cars.forEach(c => c.speed = cfg.speed * lo.dir);
   });
 }
 
 function spawnCar(lo) {
-  const ci = (lo.colorOff + Math.floor(Math.random() * 2)) % TCOLORS.length;
-  const cw = 44 + Math.floor(Math.random() * 20);
+  const ci = (lo.colorOff + Math.floor(Math.random()*2)) % TCOLORS.length;
+  const cw = 44 + Math.floor(Math.random()*20);
   const ch = 22;
-  const x  = lo.dir > 0 ? -cw - 4 : W + 4;
+  const x  = lo.dir > 0 ? -cw-4 : W+4;
   lo.cars.push({
-    x, y: lo.cy - ch / 2,
-    w: cw, h: ch,
-    col  : TCOLORS[ci],
-    speed: lo.speed * lo.dir,
+    x, y:lo.cy-ch/2, w:cw, h:ch,
+    col:TCOLORS[ci], speed:lo.speed*lo.dir,
   });
 }
 
 function updateTraffic() {
   laneObjs.forEach(lo => {
     lo.timer++;
-    if (lo.timer >= lo.interval) { lo.timer = 0; spawnCar(lo); }
+    if (lo.timer >= lo.interval) { lo.timer=0; spawnCar(lo); }
     lo.cars.forEach(c => c.x += c.speed);
-    lo.cars = lo.cars.filter(c => c.x > -100 && c.x < W + 100);
+    lo.cars = lo.cars.filter(c => c.x > -100 && c.x < W+100);
   });
 }
 
 function drawCar(c) {
-  const x = snap(c.x), y = snap(c.y), w = c.w, h = c.h;
-  ctx.fillStyle = c.col[0];
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = c.col[1];
+  const x=snap(c.x), y=snap(c.y), w=c.w, h=c.h;
+  ctx.fillStyle=c.col[0]; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle=c.col[1];
   ctx.fillRect(x+~~(w*.18), y+~~(h*.22), ~~(w*.64), ~~(h*.55));
-  ctx.fillStyle = 'rgba(160,210,255,0.45)';
+  ctx.fillStyle='rgba(160,210,255,0.45)';
   ctx.fillRect(x+~~(w*.10), y+~~(h*.18), ~~(w*.20), ~~(h*.62));
   ctx.fillRect(x+~~(w*.70), y+~~(h*.18), ~~(w*.20), ~~(h*.62));
-  ctx.fillStyle = '#111';
-  ctx.fillRect(x+2,     y,         6, 4);
-  ctx.fillRect(x+w-8,   y,         6, 4);
-  ctx.fillRect(x+2,     y+h-4,     6, 4);
-  ctx.fillRect(x+w-8,   y+h-4,     6, 4);
-}
-
-function drawAllTraffic() {
-  laneObjs.forEach(lo => lo.cars.forEach(drawCar));
+  ctx.fillStyle='#111';
+  ctx.fillRect(x+2,   y,     6,4); ctx.fillRect(x+w-8, y,     6,4);
+  ctx.fillRect(x+2,   y+h-4, 6,4); ctx.fillRect(x+w-8, y+h-4, 6,4);
 }
 
 // ── ROAD ─────────────────────────────────────────────────────────────
-function drawStripes(y, h, c1, c2, sh) {
-  ctx.fillStyle = c1; ctx.fillRect(0, y, W, h);
-  ctx.fillStyle = c2;
-  for (let sy = y; sy < y+h; sy += sh*2) ctx.fillRect(0, sy, W, sh);
+function drawStripes(y,h,c1,c2,sh) {
+  ctx.fillStyle=c1; ctx.fillRect(0,y,W,h);
+  ctx.fillStyle=c2;
+  for (let sy=y; sy<y+h; sy+=sh*2) ctx.fillRect(0,sy,W,sh);
 }
 
 function drawRoad() {
   drawStripes(SAFE_TOP_Y, SAFE_TOP_H, C.grassTop, C.grassTopAlt, 4);
   drawStripes(SAFE_BOT_Y, SAFE_BOT_H, C.grassBot, C.grassBotAlt, 4);
 
-  for (let i = 0; i < NLANES; i++) {
-    ctx.fillStyle = i % 2 === 0 ? C.road : C.roadAlt;
-    ctx.fillRect(0, LANES_TOP_Y + i*LANE_H, W, LANE_H);
-    ctx.fillRect(0, LANES_BOT_Y + i*LANE_H, W, LANE_H);
+  for (let i=0; i<NLANES; i++) {
+    ctx.fillStyle = i%2===0 ? C.road : C.roadAlt;
+    ctx.fillRect(0, LANES_TOP_Y+i*LANE_H, W, LANE_H);
+    ctx.fillRect(0, LANES_BOT_Y+i*LANE_H, W, LANE_H);
   }
 
-  ctx.fillStyle = C.laneMarker;
-  for (let i = 1; i < NLANES; i++) {
-    const yT = LANES_TOP_Y + i*LANE_H, yB = LANES_BOT_Y + i*LANE_H;
-    for (let x = 0; x < W; x += 28) {
-      ctx.fillRect(x, yT-1, 18, 2);
-      ctx.fillRect(x, yB-1, 18, 2);
+  ctx.fillStyle=C.laneMarker;
+  for (let i=1; i<NLANES; i++) {
+    const yT=LANES_TOP_Y+i*LANE_H, yB=LANES_BOT_Y+i*LANE_H;
+    for (let x=0; x<W; x+=28) {
+      ctx.fillRect(x,yT-1,18,2); ctx.fillRect(x,yB-1,18,2);
     }
   }
 
-  ctx.fillStyle = '#999';
-  ctx.fillRect(0, LANES_TOP_Y,                   W, 2);
-  ctx.fillRect(0, LANES_TOP_Y+NLANES*LANE_H-2,   W, 2);
-  ctx.fillRect(0, LANES_BOT_Y,                   W, 2);
-  ctx.fillRect(0, LANES_BOT_Y+NLANES*LANE_H-2,   W, 2);
+  ctx.fillStyle='#999';
+  ctx.fillRect(0,LANES_TOP_Y,                  W,2);
+  ctx.fillRect(0,LANES_TOP_Y+NLANES*LANE_H-2,  W,2);
+  ctx.fillRect(0,LANES_BOT_Y,                  W,2);
+  ctx.fillRect(0,LANES_BOT_Y+NLANES*LANE_H-2,  W,2);
 
-  ctx.fillStyle = C.divider;
-  ctx.fillRect(0, DIVIDER_Y, W, DIVIDER_H);
-  ctx.fillStyle = C.dividerDark;
-  for (let x = 0; x < W; x += 24) ctx.fillRect(x, DIVIDER_Y, 12, DIVIDER_H);
+  ctx.fillStyle=C.divider;
+  ctx.fillRect(0,DIVIDER_Y,W,DIVIDER_H);
+  ctx.fillStyle=C.dividerDark;
+  for (let x=0; x<W; x+=24) ctx.fillRect(x,DIVIDER_Y,12,DIVIDER_H);
 
-  // Crossroad paths over road and grass
+  // Crossroad paths over everything
   for (const cx of [LEFT_CX, RIGHT_CX]) {
-    ctx.fillStyle = C.crossroad;
+    ctx.fillStyle=C.crossroad;
     ctx.fillRect(snap(cx-CROSS_W/2), 0, CROSS_W, H);
-    ctx.fillStyle = C.crossEdge;
-    ctx.fillRect(snap(cx-CROSS_W/2),     0, 2, H);
-    ctx.fillRect(snap(cx+CROSS_W/2-2),   0, 2, H);
+    ctx.fillStyle=C.crossEdge;
+    ctx.fillRect(snap(cx-CROSS_W/2),    0, 2, H);
+    ctx.fillRect(snap(cx+CROSS_W/2-2),  0, 2, H);
   }
 }
 
-// ── LEVEL INDICATOR (upper-left of game canvas) ──────────────────────
+// ── LEVEL INDICATOR ──────────────────────────────────────────────────
 function drawLevelIndicator() {
-  ctx.fillStyle = '#f0c040';
-  ctx.font = 'bold 14px "Courier New"';
-  ctx.textAlign = 'left';
-  ctx.fillText('L' + gameLevel, 6, 16);
+  ctx.fillStyle='#f0c040';
+  ctx.font='bold 14px "Courier New"';
+  ctx.textAlign='left';
+  ctx.fillText('L'+gameLevel, 6, 16);
 }
 
-// ── PLAYER ───────────────────────────────────────────────────────────
-const MW = 10, MH = 20;
+// ── PLAYER / MOTORCYCLE ──────────────────────────────────────────────
+const MW           = 10;
+const MH           = 20;
+const MOTO_SPEED   = 4.0;   // px/frame — player controlled
+const AUTO_SPEED   = 10.0;  // px/frame — auto transfer phase
+
+// Auto-transfer states
+// 'none'      — player has control
+// 'exit'      — motorcycle speeding off screen (up or down)
+// 'transfer'  — motorcycle is off-screen, being repositioned
+// 'enter'     — motorcycle coming back on screen toward traffic entry
+
 let player = {};
-let lapStarted = false, crossedBotLanes = false,
-    crossedDivider = false, crossedTopLanes = false;
+
+// Which crossroad the player is currently on: 'left' | 'right'
+// Direction of travel when player-controlled: 'up' | 'down'
+// (left crossroad = going up, right crossroad = going down)
 
 function resetPlayer() {
   player = {
-    x: LEFT_CX, y: SAFE_BOT_Y + SAFE_BOT_H * 0.55,
-    speed: 4.0, crossX: LEFT_CX,
+    x          : LEFT_CX,
+    y          : CLEAR_BOT_Y,
+    crossSide  : 'left',    // 'left' | 'right'
+    autoState  : 'none',    // 'none' | 'exit' | 'transfer' | 'enter'
+    visible    : true,
   };
-  lapStarted = crossedBotLanes = crossedDivider = crossedTopLanes = false;
+}
+
+// Entry Y for each side when returning from auto-transfer:
+// Left crossroad: player travels UP → enters from bottom safe zone
+// Right crossroad: player travels DOWN → enters from top safe zone
+function entryY(side) {
+  return side === 'left' ? CLEAR_BOT_Y : CLEAR_TOP_Y;
+}
+
+// The Y at which the player is "close to entering the first lane of traffic"
+// Left side (going up):   bottom edge of bottom lanes = SAFE_BOT_Y (y=416)
+// Right side (going down): top edge of top lanes = LANES_TOP_Y (y=40)
+function trafficEntryY(side) {
+  return side === 'left'
+    ? SAFE_BOT_Y - MH        // just above bottom safe zone, ready to enter
+    : LANES_TOP_Y + MH;      // just below top safe zone, ready to enter
 }
 
 function drawMoto(x, y) {
-  const px = snap(x-MW/2), py = snap(y-MH/2);
-  ctx.fillStyle = '#1a1a1a';
+  const px=snap(x-MW/2), py=snap(y-MH/2);
+  ctx.fillStyle='#1a1a1a';
   ctx.fillRect(px+1, py+MH-5, MW-2, 5);
   ctx.fillRect(px+1, py,       MW-2, 5);
-  ctx.fillStyle = C.moto;
+  ctx.fillStyle=C.moto;
   ctx.fillRect(px+2, py+4, MW-4, MH-8);
-  ctx.fillStyle = C.motoDark;
+  ctx.fillStyle=C.motoDark;
   ctx.fillRect(px+2, py+5, MW-4, 7);
-  ctx.fillStyle = '#ffff99';
+  ctx.fillStyle='#ffff99';
   ctx.fillRect(px+3, py+1, MW-6, 3);
 }
 
 function updatePlayer() {
-  if (keys['ArrowUp'])   player.y -= player.speed;
-  if (keys['ArrowDown']) player.y += player.speed;
-  player.x = player.crossX;
-  player.y = Math.max(MH/2+1, Math.min(H-MH/2-1, player.y));
+  const p = player;
+
+  if (p.autoState === 'none') {
+    // ── Normal player control ────────────────────────────────────────
+    // Left crossroad: only UP moves toward traffic; DOWN moves away (clamped)
+    // Right crossroad: only DOWN moves toward traffic; UP moves away (clamped)
+    if (keys['ArrowUp'])   p.y -= MOTO_SPEED;
+    if (keys['ArrowDown']) p.y += MOTO_SPEED;
+
+    // Clamp to screen
+    p.y = Math.max(MH/2+1, Math.min(H-MH/2-1, p.y));
+    p.x = p.crossSide === 'left' ? LEFT_CX : RIGHT_CX;
+
+    // Check if player has cleared the traffic on their current side
+    if (p.crossSide === 'left'  && p.y < SAFE_TOP_Y + MH) startAutoTransfer();
+    if (p.crossSide === 'right' && p.y > H - MH)           startAutoTransfer();
+
+  } else if (p.autoState === 'exit') {
+    // ── Speeding off screen ──────────────────────────────────────────
+    if (p.crossSide === 'left') {
+      p.y -= AUTO_SPEED;
+      if (p.y + MH/2 < 0) beginTransfer();
+    } else {
+      p.y += AUTO_SPEED;
+      if (p.y - MH/2 > H) beginTransfer();
+    }
+
+  } else if (p.autoState === 'transfer') {
+    // Off-screen: reposition to other crossroad, same off-screen zone
+    // crossSide has already been flipped in beginTransfer()
+    // Just move one frame then go to 'enter'
+    p.autoState = 'enter';
+    p.x = p.crossSide === 'left' ? LEFT_CX : RIGHT_CX;
+    // Place off-screen on the correct side
+    if (p.crossSide === 'left') {
+      p.y = H + MH;   // below screen, will travel up
+    } else {
+      p.y = -MH;      // above screen, will travel down
+    }
+
+  } else if (p.autoState === 'enter') {
+    // ── Re-entering from off screen ──────────────────────────────────
+    // Left crossroad enters from bottom (travel up)
+    // Right crossroad enters from top (travel down)
+    if (p.crossSide === 'left') {
+      p.y -= AUTO_SPEED;
+      // Stop when safely in bottom safe zone, ready for player
+      if (p.y <= CLEAR_BOT_Y) {
+        p.y = CLEAR_BOT_Y;
+        finishAutoTransfer();
+      }
+    } else {
+      p.y += AUTO_SPEED;
+      // Stop when safely in top safe zone, ready for player
+      if (p.y >= CLEAR_TOP_Y) {
+        p.y = CLEAR_TOP_Y;
+        finishAutoTransfer();
+      }
+    }
+  }
 }
 
-// ── COLLISION ────────────────────────────────────────────────────────
+function startAutoTransfer() {
+  player.autoState = 'exit';
+  // Count the lap when transfer sequence begins
+  laps++;
+  if (laps > hiScore) hiScore = laps;
+  document.getElementById('lapDisplay').textContent = laps;
+  document.getElementById('hiDisplay').textContent  = hiScore;
+  beep(880,0.07); beep(1100,0.07); beep(1320,0.10); beep(1760,0.14);
+}
+
+function beginTransfer() {
+  // Flip to the other crossroad
+  player.crossSide  = player.crossSide === 'left' ? 'right' : 'left';
+  player.autoState  = 'transfer';
+}
+
+function finishAutoTransfer() {
+  player.autoState = 'none';
+}
+
+// ── COLLISION (only when player has control) ─────────────────────────
 function checkCollision() {
-  const px = player.x-MW/2+2, py = player.y-MH/2+2;
-  const pw = MW-4, ph = MH-4;
+  if (player.autoState !== 'none') return false;
+  const px=player.x-MW/2+2, py=player.y-MH/2+2;
+  const pw=MW-4, ph=MH-4;
   for (const lo of laneObjs)
     for (const c of lo.cars)
       if (px < c.x+c.w && px+pw > c.x && py < c.y+c.h && py+ph > c.y)
         return true;
   return false;
-}
-
-// ── LAP ──────────────────────────────────────────────────────────────
-function getZone(y) {
-  if (y >= SAFE_BOT_Y)                     return 'botSafe';
-  if (y >= LANES_BOT_Y && y < SAFE_BOT_Y)  return 'botLanes';
-  if (y >= DIVIDER_Y   && y < LANES_BOT_Y) return 'divider';
-  if (y >= LANES_TOP_Y && y < DIVIDER_Y)   return 'topLanes';
-  return 'topSafe';
-}
-
-function checkLap() {
-  const zone = getZone(player.y);
-  if (!lapStarted) { if (zone !== 'botSafe') lapStarted = true; return; }
-  if (zone === 'botLanes' || zone === 'divider' || zone === 'topLanes') crossedBotLanes = true;
-  if (zone === 'divider'  || zone === 'topLanes') crossedDivider = true;
-  if (zone === 'topLanes') crossedTopLanes = true;
-  if (zone === 'topSafe' && crossedBotLanes && crossedDivider && crossedTopLanes) {
-    laps++;
-    if (laps > hiScore) hiScore = laps;
-    document.getElementById('lapDisplay').textContent = laps;
-    document.getElementById('hiDisplay').textContent  = hiScore;
-    beep(880,0.07); beep(1100,0.07); beep(1320,0.10); beep(1760,0.14);
-    resetPlayer();
-  }
-  if (zone === 'botSafe')
-    lapStarted = crossedBotLanes = crossedDivider = crossedTopLanes = false;
 }
 
 // ── LEVEL TIMER ──────────────────────────────────────────────────────
@@ -411,7 +473,7 @@ let frameCount = 0;
 
 function updateLevel() {
   frameCount++;
-  const newLevel = Math.min(MAX_LEVEL, Math.floor(frameCount / FRAMES_PER_LEVEL) + 1);
+  const newLevel = Math.min(MAX_LEVEL, Math.floor(frameCount/FRAMES_PER_LEVEL)+1);
   if (newLevel !== gameLevel) {
     gameLevel = newLevel;
     applyLevelToLanes();
@@ -421,38 +483,52 @@ function updateLevel() {
 }
 
 // ── GAME STATE ───────────────────────────────────────────────────────
-let state = 'title', laps = 0, hiScore = 0, flashTimer = 0;
+let state='title', laps=0, hiScore=0, flashTimer=0;
+let frozen=false, freezeEnd=0;
 
 function startGame() {
-  laps = 0; gameLevel = 1; frameCount = 0;
-  document.getElementById('lapDisplay').textContent = '0';
-  document.getElementById('hiDisplay').textContent  = hiScore;
-  document.getElementById('footer').textContent     = '';
+  laps=0; gameLevel=1; frameCount=0; frozen=false;
+  document.getElementById('lapDisplay').textContent='0';
+  document.getElementById('hiDisplay').textContent=hiScore;
+  document.getElementById('footer').textContent='';
   resetPlayer();
   makeLaneObjs();
-  state = 'playing';
+  state='playing';
 }
 
+// TODO: rename this function
 function killPlayer() {
-  state = 'dead'; flashTimer = 20;
-  beep(280,0.05,'sawtooth');
-  setTimeout(()=>beep(180,0.05,'sawtooth'),60);
-  setTimeout(()=>beep(110,0.30,'sawtooth',0.22),120);
-  document.getElementById('footer').textContent = 'PRESS SPACE TO PLAY AGAIN';
+  if (frozen) return;
+  frozen   = true;
+  freezeEnd = performance.now() + HIT_FREEZE_MS;
+  player.autoState = 'none';
+  beep(220,0.05,'sawtooth');
+  setTimeout(()=>beep(160,0.05,'sawtooth'), 80);
+  setTimeout(()=>beep(100,0.15,'sawtooth',0.18), 160);
+}
+
+function resetPlayerToPathStart() {
+  if (player.crossSide === 'left') {
+    player.x = LEFT_CX;
+    player.y = CLEAR_BOT_Y;
+  } else {
+    player.x = RIGHT_CX;
+    player.y = CLEAR_TOP_Y;
+  }
 }
 
 function endGame() {
-  state = 'gameover';
+  state='gameover';
   beep(440,0.1); beep(330,0.1); beep(220,0.3,'sawtooth',0.18);
-  document.getElementById('footer').textContent = 'PRESS SPACE TO PLAY AGAIN';
+  document.getElementById('footer').textContent='PRESS SPACE TO PLAY AGAIN';
 }
 
 // ── AUDIO ────────────────────────────────────────────────────────────
-let audioCtx = null;
+let audioCtx=null;
 function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if (!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
 }
-function beep(freq, dur, type='square', vol=0.12) {
+function beep(freq,dur,type='square',vol=0.12) {
   if (!audioCtx) return;
   try {
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -465,42 +541,43 @@ function beep(freq, dur, type='square', vol=0.12) {
 }
 
 // ── INPUT ────────────────────────────────────────────────────────────
-const keys = {};
-document.addEventListener('keydown', e => {
-  keys[e.key] = true;
+const keys={};
+document.addEventListener('keydown', e=>{
+  keys[e.key]=true;
   if (e.key===' ') {
     initAudio();
-    if (state==='title'||state==='dead'||state==='gameover') startGame();
+    if (state==='title'||state==='gameover') startGame();
     e.preventDefault();
   }
   if (['ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
 });
-document.addEventListener('keyup', e => { keys[e.key]=false; });
+document.addEventListener('keyup', e=>{ keys[e.key]=false; });
 
-// ── HELPERS ──────────────────────────────────────────────────────────
 function snap(v) { return Math.round(v); }
 
-// ── SCREENS ──────────────────────────────────────────────────────────
+// ── OVERLAY SCREENS ───────────────────────────────────────────────────
 function drawTitle() {
   drawRoad();
-  drawMoto(LEFT_CX,  SAFE_BOT_Y+32);
-  drawMoto(RIGHT_CX, SAFE_BOT_Y+32);
+  drawMoto(LEFT_CX,  CLEAR_BOT_Y);
+  drawMoto(RIGHT_CX, CLEAR_TOP_Y);
   ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
   ctx.textAlign='center';
   ctx.fillStyle='#f0c040'; ctx.font='bold 54px "Courier New"';
-  ctx.fillText('CROSSROADS',W/2,155);
-  ctx.fillStyle='#e04020'; ctx.font='17px "Courier New"';
-  ctx.fillText('CROSS ALL 8 LANES TO SCORE A LAP',W/2,205);
+  ctx.fillText('CROSSROADS',W/2,148);
+  ctx.fillStyle='#e04020'; ctx.font='16px "Courier New"';
+  ctx.fillText('CROSS ALL 8 LANES — FIGURE-8 LAPS',W/2,196);
   ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
-  ctx.fillText('UP / DOWN ARROWS TO MOVE',W/2,272);
-  ctx.fillText('AVOID THE TRAFFIC',W/2,296);
-  ctx.fillText('9 LEVELS  —  20 SECONDS EACH',W/2,320);
+  ctx.fillText('UP / DOWN ARROWS TO MOVE',W/2,260);
+  ctx.fillText('LEFT PATH → UP    RIGHT PATH → DOWN',W/2,284);
+  ctx.fillText('AVOID ALL TRAFFIC',W/2,308);
+  ctx.fillText('9 LEVELS  —  20 SECONDS EACH',W/2,332);
   if (Math.floor(Date.now()/500)%2===0) {
     ctx.fillStyle='#f0c040'; ctx.font='17px "Courier New"';
     ctx.fillText('PRESS SPACE TO START',W/2,400);
   }
 }
 
+// TODO: for multiple reason this is likely remove. Test and confirm
 function drawDeadOverlay() {
   if (flashTimer>0) {
     ctx.fillStyle=`rgba(255,255,255,${flashTimer/20})`; ctx.fillRect(0,0,W,H);
@@ -525,13 +602,13 @@ function drawGameOverOverlay() {
   ctx.fillStyle='#f0c040'; ctx.font='bold 42px "Courier New"';
   ctx.fillText('GAME OVER',W/2,170);
   ctx.font='20px "Courier New"';
-  ctx.fillText('ALL 9 LEVELS COMPLETE',W/2,220);
+  ctx.fillText('ALL 9 LEVELS COMPLETE',W/2,218);
   ctx.font='22px "Courier New"';
-  ctx.fillText('LAPS: '+laps,W/2,275);
-  ctx.fillText('BEST: '+hiScore,W/2,308);
+  ctx.fillText('LAPS: '+laps,W/2,272);
+  ctx.fillText('BEST: '+hiScore,W/2,306);
   if (Math.floor(Date.now()/500)%2===0) {
     ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
-    ctx.fillText('PRESS SPACE TO PLAY AGAIN',W/2,370);
+    ctx.fillText('PRESS SPACE TO PLAY AGAIN',W/2,368);
   }
 }
 
@@ -540,8 +617,8 @@ function drawScanlines() {
   for (let y=0; y<H; y+=2) ctx.fillRect(0,y,W,1);
 }
 
-// ── 30 FPS LOOP ──────────────────────────────────────────────────────
-let lastTime = 0;
+// ── 30 FPS LOOP ───────────────────────────────────────────────────────
+let lastTime=0;
 
 function loop(ts) {
   requestAnimationFrame(loop);
@@ -553,22 +630,28 @@ function loop(ts) {
   if (state==='title') { drawTitle(); drawScanlines(); return; }
 
   drawRoad();
+  updateTraffic();
 
   if (state==='playing') {
-    updateTraffic();
-    updatePlayer();
-    checkLap();
-    updateLevel();
-    if (checkCollision()) killPlayer();
-  } else {
-    updateTraffic(); // traffic keeps moving on dead/gameover
+    if (frozen) {
+      if (performance.now() >= freezeEnd) {
+        frozen = false;
+        resetPlayerToPathStart();
+      }
+    } else {
+      updatePlayer();
+      updateLevel();
+      if (checkCollision()) killPlayer();
+    }
   }
 
-  drawAllTraffic();
+  laneObjs.forEach(lo => lo.cars.forEach(drawCar));
+
+  // Draw motorcycle (even during auto states, so player sees it zoom off/on)
   drawMoto(player.x, player.y);
+
   drawLevelIndicator();
 
-  if (state==='dead')     drawDeadOverlay();
   if (state==='gameover') drawGameOverOverlay();
 
   drawScanlines();
