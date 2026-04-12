@@ -52,3 +52,14 @@ by a car, the game pauses for 500ms, then moves the motorcycle to the start of
 the current lane.
 
 
+Version 01.04	6 minutes dev	2 minutes code gen	3 minutes test		1 hour 13
+
+For previous changes, the entire app was recreated from scratch by Claude. The
+app is built enough, we'll now focus on incremental changes.
+This change adds scoring to the game. When a lap is completed, the player gets
+points that match the level. For example, if they get to the other side of the
+road and it's level 5, they get 5 more points. The score is displayed in the
+upper-right corner of the game.
+
+
+

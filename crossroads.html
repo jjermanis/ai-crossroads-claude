@@ -315,6 +315,13 @@ function drawLevelIndicator() {
   ctx.fillText('L'+gameLevel, 6, 16);
 }
 
+function drawScoreDisplay() {
+  ctx.fillStyle='#f0c040';
+  ctx.font='bold 14px "Courier New"';
+  ctx.textAlign='right';
+  ctx.fillText(score, W-6, 16);
+}
+
 // ── PLAYER / MOTORCYCLE ──────────────────────────────────────────────
 const MW           = 10;
 const MH           = 20;
@@ -439,6 +446,7 @@ function startAutoTransfer() {
   player.autoState = 'exit';
   // Count the lap when transfer sequence begins
   laps++;
+  score += gameLevel;
   if (laps > hiScore) hiScore = laps;
   document.getElementById('lapDisplay').textContent = laps;
   document.getElementById('hiDisplay').textContent  = hiScore;
@@ -483,11 +491,11 @@ function updateLevel() {
 }
 
 // ── GAME STATE ───────────────────────────────────────────────────────
-let state='title', laps=0, hiScore=0, flashTimer=0;
+let state='title', laps=0, hiScore=0, score=0, flashTimer=0;
 let frozen=false, freezeEnd=0;
 
 function startGame() {
-  laps=0; gameLevel=1; frameCount=0; frozen=false;
+  laps=0; score=0; gameLevel=1; frameCount=0; frozen=false;
   document.getElementById('lapDisplay').textContent='0';
   document.getElementById('hiDisplay').textContent=hiScore;
   document.getElementById('footer').textContent='';
@@ -651,6 +659,7 @@ function loop(ts) {
   drawMoto(player.x, player.y);
 
   drawLevelIndicator();
+  drawScoreDisplay();
 
   if (state==='gameover') drawGameOverOverlay();
 
