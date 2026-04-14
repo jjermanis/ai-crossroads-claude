@@ -71,3 +71,24 @@ enough. Also, the motorcycle always faced in the same direction. I had Claude
 update to flip the motorcycle around when changing the crossroads.
 
 
+Version 01.06	10 minutes dev	2 minute code gen	2 minutes test		1 hour 39
+
+The UI for the motorcycle... wasn't quite right. It didn't look horrible, but 
+wasn't easily recognizable as a motorcycle. I made a few changes and discovered
+that the wheels were on sideways. Seems like a typical AI quirk. I had them 
+turned the right way - it immediately looked a lot better.
+The crash check was a little too unforgiving. The motorcycle and a car could 
+collide and it would be fine. There was a buffer of 4 pixels. Switched it to
+2 pixels to make it a little less forgiving.
+
+
+
+TODO: LAPS, BEST, get rid of that
+TODO: All the text in the middle of the screen when it's over, get rid of that.
+TODO: make the score look more Atari style. Bigger if nothing else
+TODO: At the end of each level, do some beeping and blink at the end of 5 seconds
+TODO: noises of cars running and passing?
+TODO: show the best score, in terms of the score, not the laps
+TODO: can it retain when you leave and come back. Drag Race XXV does this.
+
+

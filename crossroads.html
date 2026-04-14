@@ -371,15 +371,21 @@ function drawMoto(x, y, flipped) {
   ctx.translate(snap(x), snap(y));
   if (flipped) ctx.rotate(Math.PI);
   const px=-MW/2, py=-MH/2;
+  // Front wheel (narrow vertical strip, top)
   ctx.fillStyle='#1a1a1a';
-  ctx.fillRect(px+1, py+MH-5, MW-2, 5);
-  ctx.fillRect(px+1, py,       MW-2, 5);
+  ctx.fillRect(px+3, py, 6, 6);
+  // Body / engine (wider middle)
   ctx.fillStyle=C.moto;
-  ctx.fillRect(px+2, py+4, MW-4, MH-8);
+  ctx.fillRect(px+1, py+6, MW-2, 12);
+  // Rider (darker band across body)
   ctx.fillStyle=C.motoDark;
-  ctx.fillRect(px+2, py+5, MW-4, 7);
+  ctx.fillRect(px+1, py+9, MW-2, 5);
+  // Rear wheel (narrow vertical strip, bottom)
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(px+3, py+18, 6, 6);
+  // Headlight (small bright dot on front wheel)
   ctx.fillStyle='#ffff99';
-  ctx.fillRect(px+3, py+1, MW-6, 3);
+  ctx.fillRect(px+5, py+1, 2, 2);
   ctx.restore();
 }
 
@@ -470,8 +476,8 @@ function finishAutoTransfer() {
 // ── COLLISION (only when player has control) ─────────────────────────
 function checkCollision() {
   if (player.autoState !== 'none') return false;
-  const px=player.x-MW/2+1, py=player.y-MH/2+1;
-  const pw=MW-2, ph=MH-2;
+  const px=player.x-MW/2+2, py=player.y-MH/2+1;
+  const pw=MW-4, ph=MH-2;
   for (const lo of laneObjs)
     for (const c of lo.cars)
       if (px < c.x+c.w && px+pw > c.x && py < c.y+c.h && py+ph > c.y)
