@@ -323,8 +323,8 @@ function drawScoreDisplay() {
 }
 
 // ── PLAYER / MOTORCYCLE ──────────────────────────────────────────────
-const MW           = 10;
-const MH           = 20;
+const MW           = 12;
+const MH           = 24;
 const MOTO_SPEED   = 4.0;   // px/frame — player controlled
 const AUTO_SPEED   = 10.0;  // px/frame — auto transfer phase
 
@@ -366,8 +366,11 @@ function trafficEntryY(side) {
     : LANES_TOP_Y + MH;      // just below top safe zone, ready to enter
 }
 
-function drawMoto(x, y) {
-  const px=snap(x-MW/2), py=snap(y-MH/2);
+function drawMoto(x, y, flipped) {
+  ctx.save();
+  ctx.translate(snap(x), snap(y));
+  if (flipped) ctx.rotate(Math.PI);
+  const px=-MW/2, py=-MH/2;
   ctx.fillStyle='#1a1a1a';
   ctx.fillRect(px+1, py+MH-5, MW-2, 5);
   ctx.fillRect(px+1, py,       MW-2, 5);
@@ -377,6 +380,7 @@ function drawMoto(x, y) {
   ctx.fillRect(px+2, py+5, MW-4, 7);
   ctx.fillStyle='#ffff99';
   ctx.fillRect(px+3, py+1, MW-6, 3);
+  ctx.restore();
 }
 
 function updatePlayer() {
@@ -466,8 +470,8 @@ function finishAutoTransfer() {
 // ── COLLISION (only when player has control) ─────────────────────────
 function checkCollision() {
   if (player.autoState !== 'none') return false;
-  const px=player.x-MW/2+2, py=player.y-MH/2+2;
-  const pw=MW-4, ph=MH-4;
+  const px=player.x-MW/2+1, py=player.y-MH/2+1;
+  const pw=MW-2, ph=MH-2;
   for (const lo of laneObjs)
     for (const c of lo.cars)
       if (px < c.x+c.w && px+pw > c.x && py < c.y+c.h && py+ph > c.y)
@@ -566,8 +570,8 @@ function snap(v) { return Math.round(v); }
 // ── OVERLAY SCREENS ───────────────────────────────────────────────────
 function drawTitle() {
   drawRoad();
-  drawMoto(LEFT_CX,  CLEAR_BOT_Y);
-  drawMoto(RIGHT_CX, CLEAR_TOP_Y);
+  drawMoto(LEFT_CX,  CLEAR_BOT_Y, false);
+  drawMoto(RIGHT_CX, CLEAR_TOP_Y, true);
   ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
   ctx.textAlign='center';
   ctx.fillStyle='#f0c040'; ctx.font='bold 54px "Courier New"';
@@ -656,7 +660,7 @@ function loop(ts) {
   laneObjs.forEach(lo => lo.cars.forEach(drawCar));
 
   // Draw motorcycle (even during auto states, so player sees it zoom off/on)
-  drawMoto(player.x, player.y);
+  drawMoto(player.x, player.y, player.crossSide === 'right');
 
   drawLevelIndicator();
   drawScoreDisplay();

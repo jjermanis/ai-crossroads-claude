@@ -62,4 +62,12 @@ road and it's level 5, they get 5 more points. The score is displayed in the
 upper-right corner of the game.
 
 
+Version 01.05	8 minutes dev	1 minute code gen	3 minutes test		1 hour 25
+
+The motorcycle seemed a little small. The motorcycle could wait between lanes of
+cars. I asked Claude to make the car 20% larger. It is still (theoretically)
+possible to fit between cars... but it has to be pixel perfect placement. Good
+enough. Also, the motorcycle always faced in the same direction. I had Claude
+update to flip the motorcycle around when changing the crossroads.
+
 
