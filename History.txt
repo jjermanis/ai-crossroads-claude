@@ -82,9 +82,17 @@ collide and it would be fine. There was a buffer of 4 pixels. Switched it to
 2 pixels to make it a little less forgiving.
 
 
+Version 01.07	8 minutes dev	1 minute code gen	2 minutes test		1 hour 50
+
+The directions for the game said from very earlier on to not print characters
+on the game screen unless asked specific to do so. There was a lot of text on
+the screen, and the beginning and end of the game. Cleared out the text to 
+clean that up. There was a useful piece of info: the text to press start to
+play again. That was moved out, and made larger to be easier to read.
+
+
 
 TODO: LAPS, BEST, get rid of that
-TODO: All the text in the middle of the screen when it's over, get rid of that.
 TODO: make the score look more Atari style. Bigger if nothing else
 TODO: At the end of each level, do some beeping and blink at the end of 5 seconds
 TODO: noises of cars running and passing?

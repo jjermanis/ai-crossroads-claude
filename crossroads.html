@@ -35,7 +35,7 @@
     width:640px;
     text-align:center;
     color:#888;
-    font-size:13px;
+    font-size:16px;
     letter-spacing:3px;
     text-transform:uppercase;
     padding:6px 4px;
@@ -502,6 +502,7 @@ function updateLevel() {
 
 // ── GAME STATE ───────────────────────────────────────────────────────
 let state='title', laps=0, hiScore=0, score=0, flashTimer=0;
+document.getElementById('footer').textContent = 'PRESS SPACE TO START';
 let frozen=false, freezeEnd=0;
 
 function startGame() {
@@ -579,55 +580,10 @@ function drawTitle() {
   drawMoto(LEFT_CX,  CLEAR_BOT_Y, false);
   drawMoto(RIGHT_CX, CLEAR_TOP_Y, true);
   ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
-  ctx.textAlign='center';
-  ctx.fillStyle='#f0c040'; ctx.font='bold 54px "Courier New"';
-  ctx.fillText('CROSSROADS',W/2,148);
-  ctx.fillStyle='#e04020'; ctx.font='16px "Courier New"';
-  ctx.fillText('CROSS ALL 8 LANES — FIGURE-8 LAPS',W/2,196);
-  ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
-  ctx.fillText('UP / DOWN ARROWS TO MOVE',W/2,260);
-  ctx.fillText('LEFT PATH → UP    RIGHT PATH → DOWN',W/2,284);
-  ctx.fillText('AVOID ALL TRAFFIC',W/2,308);
-  ctx.fillText('9 LEVELS  —  20 SECONDS EACH',W/2,332);
-  if (Math.floor(Date.now()/500)%2===0) {
-    ctx.fillStyle='#f0c040'; ctx.font='17px "Courier New"';
-    ctx.fillText('PRESS SPACE TO START',W/2,400);
-  }
-}
-
-// TODO: for multiple reason this is likely remove. Test and confirm
-function drawDeadOverlay() {
-  if (flashTimer>0) {
-    ctx.fillStyle=`rgba(255,255,255,${flashTimer/20})`; ctx.fillRect(0,0,W,H);
-    flashTimer--; return;
-  }
-  ctx.fillStyle='rgba(0,0,0,0.70)'; ctx.fillRect(0,0,W,H);
-  ctx.textAlign='center';
-  ctx.fillStyle='#e04020'; ctx.font='bold 46px "Courier New"';
-  ctx.fillText('WIPEOUT!',W/2,185);
-  ctx.fillStyle='#f0c040'; ctx.font='22px "Courier New"';
-  ctx.fillText('LAPS: '+laps,W/2,248);
-  ctx.fillText('BEST: '+hiScore,W/2,282);
-  if (Math.floor(Date.now()/500)%2===0) {
-    ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
-    ctx.fillText('PRESS SPACE TO TRY AGAIN',W/2,348);
-  }
 }
 
 function drawGameOverOverlay() {
   ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W,H);
-  ctx.textAlign='center';
-  ctx.fillStyle='#f0c040'; ctx.font='bold 42px "Courier New"';
-  ctx.fillText('GAME OVER',W/2,170);
-  ctx.font='20px "Courier New"';
-  ctx.fillText('ALL 9 LEVELS COMPLETE',W/2,218);
-  ctx.font='22px "Courier New"';
-  ctx.fillText('LAPS: '+laps,W/2,272);
-  ctx.fillText('BEST: '+hiScore,W/2,306);
-  if (Math.floor(Date.now()/500)%2===0) {
-    ctx.fillStyle='#aaaaaa'; ctx.font='14px "Courier New"';
-    ctx.fillText('PRESS SPACE TO PLAY AGAIN',W/2,368);
-  }
 }
 
 function drawScanlines() {
