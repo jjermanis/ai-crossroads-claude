@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>CROSSROADS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
@@ -18,7 +20,7 @@
   #hud {
     width:640px;
     display:flex;
-    justify-content:space-between;
+    justify-content:center;
     align-items:center;
     color:#f0c040;
     font-size:20px;
@@ -45,9 +47,7 @@
 </head>
 <body>
 <div id="hud">
-  <span>LAPS:&nbsp;<span id="lapDisplay">0</span></span>
   <span>CROSSROADS</span>
-  <span>BEST:&nbsp;<span id="hiDisplay">0</span></span>
 </div>
 <canvas id="c" width="640" height="480"></canvas>
 <div id="footer">&nbsp;</div>
@@ -310,16 +310,16 @@ function drawRoad() {
 // ── LEVEL INDICATOR ──────────────────────────────────────────────────
 function drawLevelIndicator() {
   ctx.fillStyle='#f0c040';
-  ctx.font='bold 14px "Courier New"';
+  ctx.font='bold 28px "Press Start 2P","Courier New"';
   ctx.textAlign='left';
-  ctx.fillText('L'+gameLevel, 6, 16);
+  ctx.fillText('L'+gameLevel, 6, 34);
 }
 
 function drawScoreDisplay() {
   ctx.fillStyle='#f0c040';
-  ctx.font='bold 14px "Courier New"';
+  ctx.font='bold 28px "Press Start 2P","Courier New"';
   ctx.textAlign='right';
-  ctx.fillText(score, W-6, 16);
+  ctx.fillText(score, W-6, 34);
 }
 
 // ── PLAYER / MOTORCYCLE ──────────────────────────────────────────────
@@ -458,8 +458,6 @@ function startAutoTransfer() {
   laps++;
   score += gameLevel;
   if (laps > hiScore) hiScore = laps;
-  document.getElementById('lapDisplay').textContent = laps;
-  document.getElementById('hiDisplay').textContent  = hiScore;
   beep(880,0.07); beep(1100,0.07); beep(1320,0.10); beep(1760,0.14);
 }
 
@@ -507,8 +505,6 @@ let frozen=false, freezeEnd=0;
 
 function startGame() {
   laps=0; score=0; gameLevel=1; frameCount=0; frozen=false;
-  document.getElementById('lapDisplay').textContent='0';
-  document.getElementById('hiDisplay').textContent=hiScore;
   document.getElementById('footer').textContent='';
   resetPlayer();
   makeLaneObjs();

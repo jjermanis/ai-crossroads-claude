@@ -91,9 +91,20 @@ clean that up. There was a useful piece of info: the text to press start to
 play again. That was moved out, and made larger to be easier to read.
 
 
+Version 01.08	16 minutes dev	0 minute code gen	2 minutes test		2 hour 8
 
-TODO: LAPS, BEST, get rid of that
-TODO: make the score look more Atari style. Bigger if nothing else
+There is the level in the upper-left and the score in the upper-right. They
+looked OK, but definitely small and a bit basic (font was Courier). I asked
+Claude for recommendation of a font that would look like it was in an Atari
+game from the early 80's. One of them it suggested was Press Start 2P. It was
+a perfect fit. Added that, retain Courier as a back-up.
+To continue removing printed character that I hadn't asked for, I asked to 
+remove the LAPS and BEST score from the far upper corners. This was easy... but
+also took the title Crossroads away from the upper-center. I make a tweak to 
+re-center it.
+
+
+
 TODO: At the end of each level, do some beeping and blink at the end of 5 seconds
 TODO: noises of cars running and passing?
 TODO: show the best score, in terms of the score, not the laps
