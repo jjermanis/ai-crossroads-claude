@@ -104,8 +104,21 @@ also took the title Crossroads away from the upper-center. I make a tweak to
 re-center it.
 
 
+Version 01.09	18 minutes dev	2 minute code gen	6 minutes test		2 hour 34
 
-TODO: At the end of each level, do some beeping and blink at the end of 5 seconds
+I wanted to add some beeping and blinking at the end of each level. Give the 
+player some warning that each level is about to end. I asked Claude to blink
+the level once per second for the past 5 seconds, with a beep tone to go with
+it. The blinking worked, but the audio didn't always happen. I let Claude know
+and have it make some changes. It did, but it still made some changes. I 
+noticed that the pause for the Level to be hidden (250 ms) did not match the
+frame intervals (30 frames per second). This caused some irregularities. I 
+switched the activities to match frames. That worked, with one exceptions.
+There was a bug in the code: check that it was not Level 9. I allowed that.
+After that, the beeping and blinking worked as intended.
+
+
+
 TODO: noises of cars running and passing?
 TODO: show the best score, in terms of the score, not the laps
 TODO: can it retain when you leave and come back. Drag Race XXV does this.

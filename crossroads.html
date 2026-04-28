@@ -67,6 +67,9 @@ const FRAME_MS         = 1000 / FPS;
 const LEVEL_SECS       = 20;
 const MAX_LEVEL        = 9;
 const FRAMES_PER_LEVEL = LEVEL_SECS * FPS;  // 600
+const WARN_FRAMES      = 5 * FPS;   // 150 — last 5 seconds of level
+const WARN_CYCLE       = 30;        // 30 frames = 1 second per blink cycle
+const WARN_DARK        = 9;         // frames dark (≈300ms)
 const HIT_FREEZE_MS    = 500;
 
 // ── LAYOUT ──────────────────────────────────────────────────────────
@@ -309,6 +312,13 @@ function drawRoad() {
 
 // ── LEVEL INDICATOR ──────────────────────────────────────────────────
 function drawLevelIndicator() {
+  // During warning period, suppress drawing for the first 9 frames of each cycle
+  const framesIntoLevel = frameCount % FRAMES_PER_LEVEL;
+  const framesLeft      = FRAMES_PER_LEVEL - framesIntoLevel;
+  if (framesLeft <= WARN_FRAMES) {
+    const cyclePos = (WARN_FRAMES - framesLeft) % WARN_CYCLE;
+    if (cyclePos < WARN_DARK) return;
+  }
   ctx.fillStyle='#f0c040';
   ctx.font='bold 28px "Press Start 2P","Courier New"';
   ctx.textAlign='left';
@@ -495,6 +505,16 @@ function updateLevel() {
     applyLevelToLanes();
     beep(440,0.05); beep(550,0.08);
   }
+
+  // Warning blink: last 5 seconds of each level except the final one
+  const framesIntoLevel = frameCount % FRAMES_PER_LEVEL;
+  const framesLeft      = FRAMES_PER_LEVEL - framesIntoLevel;
+  if (framesLeft <= WARN_FRAMES) {
+    // Position within the current 30-frame blink cycle
+    const cyclePos = (WARN_FRAMES - framesLeft) % WARN_CYCLE;
+    if (cyclePos === 0) beep(520, 0.06);  // first frame of each cycle
+  }
+
   if (frameCount >= FRAMES_PER_LEVEL * MAX_LEVEL) endGame();
 }
 
