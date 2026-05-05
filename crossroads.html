@@ -20,13 +20,20 @@
   #hud {
     width:640px;
     display:flex;
-    justify-content:center;
+    justify-content:space-between;
     align-items:center;
     color:#f0c040;
     font-size:20px;
     letter-spacing:4px;
     text-transform:uppercase;
     padding:6px 8px;
+  }
+  #hud span:first-child, #hiDisplay {
+    width: 160px;
+  }
+  #hiDisplay {
+    text-align: right;
+    font-size:18px;
   }
   canvas {
     display:block;
@@ -63,7 +70,9 @@
 </head>
 <body>
 <div id="hud">
-  <span>CROSSROADS</span>
+  <span></span>
+  <span id="title-text">CROSSROADS</span>
+  <span id="hiDisplay"></span>
 </div>
 <canvas id="c" width="640" height="480"></canvas>
 <div id="footer">&nbsp;</div>
@@ -483,7 +492,6 @@ function startAutoTransfer() {
   // Count the lap when transfer sequence begins
   laps++;
   score += gameLevel;
-  if (laps > hiScore) hiScore = laps;
   beep(880,0.07); beep(1100,0.07); beep(1320,0.10); beep(1760,0.14);
 }
 
@@ -538,7 +546,9 @@ function updateLevel() {
 }
 
 // ── GAME STATE ───────────────────────────────────────────────────────
-let state='title', laps=0, hiScore=0, score=0, flashTimer=0;
+let state='title', laps=0, score=0, flashTimer=0;
+let hiScore = parseInt(localStorage.getItem('crossroads_hi') || '0', 10);
+document.getElementById('hiDisplay').textContent = 'HIGH:'+hiScore;
 let warnActive=false;
 document.getElementById('footer').textContent = 'PRESS SPACE TO START';
 let frozen=false, freezeEnd=0;
@@ -573,6 +583,11 @@ function resetPlayerToPathStart() {
 }
 
 function endGame() {
+  if (score > hiScore) {
+    hiScore = score;
+    localStorage.setItem('crossroads_hi', hiScore);
+    document.getElementById('hiDisplay').textContent = 'HIGH: '+hiScore;
+  }
   state='gameover';
   beep(440,0.1); beep(330,0.1); beep(220,0.3,'sawtooth',0.18);
   document.getElementById('footer').textContent='PRESS SPACE TO PLAY AGAIN';
