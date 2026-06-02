@@ -40,6 +40,41 @@
     image-rendering:pixelated;
     image-rendering:crisp-edges;
   }
+#game-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.touch-btns {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .touch-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    margin-top: -26px;
+  }
+}
+.touch-btn {
+  width: 60px;
+  height: 60px;
+  background: rgba(240,192,64,0.15);
+  border: 2px solid #f0c040;
+  border-radius: 8px;
+  color: #f0c040;
+  font-size: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-btn:active {
+  background: rgba(240,192,64,0.35);
+}
   #footer {
     width:640px;
     text-align:center;
@@ -74,7 +109,17 @@
   <span id="title-text">CROSSROADS</span>
   <span id="hiDisplay"></span>
 </div>
-<canvas id="c" width="640" height="480"></canvas>
+<div id="game-row">
+  <div class="touch-btns">
+    <div class="touch-btn" id="btn-up-l">▲</div>
+    <div class="touch-btn" id="btn-dn-l">▼</div>
+  </div>
+  <canvas id="c" width="640" height="480"></canvas>
+  <div class="touch-btns">
+    <div class="touch-btn" id="btn-up-r">▲</div>
+    <div class="touch-btn" id="btn-dn-r">▼</div>
+  </div>
+</div>
 <div id="footer">&nbsp;</div>
 
 <script>
@@ -669,6 +714,27 @@ document.addEventListener('keydown', e=>{
   if (['ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
 });
 document.addEventListener('keyup', e=>{ keys[e.key]=false; });
+
+function setupTouchButtons() {
+  function holdKey(key, el) {
+    el.addEventListener('touchstart', e=>{
+      e.preventDefault();
+      initAudio();
+      keys[key]=true;
+    }, {passive:false});
+    el.addEventListener('touchend',   e=>{ e.preventDefault(); keys[key]=false; }, {passive:false});
+    el.addEventListener('touchcancel',e=>{ e.preventDefault(); keys[key]=false; }, {passive:false});
+    // Mouse support for non-touch tablets / desktop testing
+    el.addEventListener('mousedown', e=>{ initAudio(); keys[key]=true;  });
+    el.addEventListener('mouseup',   e=>{ keys[key]=false; });
+    el.addEventListener('mouseleave',e=>{ keys[key]=false; });
+  }
+  holdKey('ArrowUp',   document.getElementById('btn-up-l'));
+  holdKey('ArrowDown', document.getElementById('btn-dn-l'));
+  holdKey('ArrowUp',   document.getElementById('btn-up-r'));
+  holdKey('ArrowDown', document.getElementById('btn-dn-r'));
+}
+setupTouchButtons();
 
 function snap(v) { return Math.round(v); }
 

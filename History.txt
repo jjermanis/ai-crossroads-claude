@@ -166,10 +166,27 @@ working; I needed to adjust for that. Finally, I shrunk the high score font
 from 20 to 18 fit in a little better.
 
 
+Version 02.02	12 minutes	1 minute code gen	2 minute test		3 hours 35
+
+I want the game to be playable on the tablet. I want to add directional button 
+on screen to control the motorcycle. The control scheme is the same: up and 
+down buttons. I want them on both the left and right side - the functionality
+is identical, just to make it convenient for players. I put out the request to 
+Claude - first attempt worked well. A few minor changes.
+I want the buttons to center based on the center of the road. That is not the
+same as centering around the game grid. It was an easy one-line change, adding
+margin-top to the buttons style.
+I thought the arrow was a little small for the button. Increased font size from
+20pt to 32pt. No Claude needed for that.
+Finally, I only want them there for when they player is on a tablet. The 
+buttons look a little annoying to me - why have those controls in case they are
+needed. Claude added the control to only show them when running on mobile. No
+idea if the works (it does hide on desktop). Will try that on iPad soon.
+
+
 
 TODO: code review - is car noise based on distance and car speed?
-TODO: make this game playable on a tablet.
-	Up and down arrows on both left and right sides. 
-	Space on To Play Again is clickable
-
+TODO: Space on To Play Again is clickable
+TODO: add a mute button
+TODO: add a tab icon
 
