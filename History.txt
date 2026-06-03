@@ -184,9 +184,26 @@ needed. Claude added the control to only show them when running on mobile. No
 idea if the works (it does hide on desktop). Will try that on iPad soon.
 
 
+Version 02.03	10 minutes	0 minute code gen	1 minute test		3 hours 46
 
+Adding more functionality to play the game on the tablet. Currently to start a 
+game, the player need to type Space - that will not be available on the mobile
+app. Added functionality to accept tapping on the text to start a game.
+A minor little change, but changed the text to this:
+CLICK HERE OR PRESS SPACE TO START
+Testing on iPad, there is no audio. I asked Claude about it. It provided a 
+recommendation to handle the case where the web apps audio context is 
+suspended. This is added; will test later.
+
+
+
+TODO: game does not have any audio on iPad
+TODO: cursor goes to pointer mode for locations, even when Play Again is off
+TODO: when the game is over, the mobile control button remain bright. They need
+	to be dimmed like the game is.
 TODO: code review - is car noise based on distance and car speed?
-TODO: Space on To Play Again is clickable
 TODO: add a mute button
 TODO: add a tab icon
+TODO: update README for changes, including adding the Mobile section 
+
 
