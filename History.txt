@@ -213,11 +213,24 @@ resulted in a defect that could not run the app. This lack of audio on mobile is
 minor - it will remain on the TODO list.
 
 
+Version 02.05	19 minutes	1 minutes code gen	2 minute test		4 hours 27
+
+I wanted to add a Mute button for this game. For the UI, I want it identical to the
+game Minotaur. An alternating button, with a speaker making noise, or crossed out.
+I asked Claude to implement Mute in Crossroads, providing the Minotaur HTML. It 
+primarily worked, with alignment issues. For some reason, the Mute button was 
+right-justified; it should have been left. Also, it was not aligned vertical with the
+SPACE TO START text. These fixes were easy. It worked well after that, no issues.
+I wanted to add an icon for the tab. I thought the motorcycle seen in the game would
+be the best choice. I asked Claude for suggestions. It's number one was also the
+motorcycle. It generated the (long) one-liner for that. The icon it generated had a
+black background, making the wheels easier to see. I asked it to switch over to
+translucent. This was easy - just deleting a bit of the original one-liner.
+
+
 
 TODO: game does not have any audio on iPad
 TODO: code review - is car noise based on distance and car speed?
-TODO: add a mute button
-TODO: add a tab icon (note: that graphical icon representing the game page. The browser tab)
 TODO: update README for changes, including adding the Mobile section 
 
 
