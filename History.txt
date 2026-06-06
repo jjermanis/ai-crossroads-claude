@@ -196,14 +196,28 @@ recommendation to handle the case where the web apps audio context is
 suspended. This is added; will test later.
 
 
+Version 02.04	12 minutes	2 minutes code gen	5 minute test		4 hours 5
+
+Some smaller quirks. After the game has started, if you mouse over the CLICK HERE...
+link, the mouse will switch to a pointer. It won't do anything, but that UI is odd.
+Asked Claude to fix. A few one-liner, where the game state changes.
+The change of that text at the bottom? It was only there to start the original game.
+It went to the original text at the end of all the games. This was an easy manual
+fix.
+Testing on iPad, I saw that the mobile-specific controller did not dim. Claude
+provided the fix for this. That worked, but had the side effect but did not provide
+the change to initially dim the controls. That was easy to fix.
+The previous version had an attempt to add audio to the game. That did not work. I
+pointed the behavior to Claude, to see if it could be resolved. The next attempt
+resulted in a defect that could not run the app. This lack of audio on mobile is
+minor - it will remain on the TODO list.
+
+
 
 TODO: game does not have any audio on iPad
-TODO: cursor goes to pointer mode for locations, even when Play Again is off
-TODO: when the game is over, the mobile control button remain bright. They need
-	to be dimmed like the game is.
 TODO: code review - is car noise based on distance and car speed?
 TODO: add a mute button
-TODO: add a tab icon
+TODO: add a tab icon (note: that graphical icon representing the game page. The browser tab)
 TODO: update README for changes, including adding the Mobile section 
 
 
