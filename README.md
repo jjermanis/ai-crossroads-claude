@@ -17,14 +17,31 @@ Everytime you cross the freeway, you get points. You get points that match the l
 
 The current level is shown in the upper-left corner. The score is in the upper-right corner. When all 9 levels are completed, the game is over. Press the space bar to play again.
 
+There is a mute button to turn the game's sound on and off as needed.
+
 
 ## Details
 This game was inspired to play like an Atari game (1200 & 2600) from the 80's.  There a multiple games from that era that have a "cross the screen" theme. The graphics here are nicer than from back then, but to an extent are in line. Atari technical challenges of that era impacted this design. For example: lots and lots of horizontal movement and limited vertical movement? That's Atari.
 
 
-## From Release #1 (Build 11 on 4/30/26)
+## Mobile
+This game is supported on a mobile tablet. This game is not playable on a smartphone.
+
+Up and down arrow buttons appear to the left and right sides of the screen. There is no difference between using the left or right side - the up and down buttons do the same thing on each side.
+
+To start a game, you can tap on the Click Here... text at the bottom of the screen. 
+
+
+## From Release #1 (Build 01.11 on 4/30/26)
 
 * Implements the base version of the game.
 
 * Nine levels are supported.
+
+## From Release #2 (Build 02.05 in 6/5/26)
+
+* Add a high score tracker.
   
+* Add support for tablet.
+
+* Added a Mute button to turn sound on and off.
