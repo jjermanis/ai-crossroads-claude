@@ -213,7 +213,7 @@ resulted in a defect that could not run the app. This lack of audio on mobile is
 minor - it will remain on the TODO list.
 
 
-Version 02.05	19 minutes	1 minutes code gen	2 minute test		4 hours 27
+Version 02.05	19 minutes	1 minute code gen	2 minute test		4 hours 27
 
 I wanted to add a Mute button for this game. For the UI, I want it identical to the
 game Minotaur. An alternating button, with a speaker making noise, or crossed out.
@@ -228,8 +228,28 @@ black background, making the wheels easier to see. I asked it to switch over to
 translucent. This was easy - just deleting a bit of the original one-liner.
 
 
+Version 2 was published with 02.05 on 6/5/26
 
-TODO: game does not have any audio on iPad
+
+Version 03.01	17 minutes dev	1 minute code gen	3 minutes test		4 hours 48
+
+This is to resolve this long standing issue:
+	The buttons are tricky on mobile. It appears that it's selecting the text
+	(the arrow) on a button. It needs to be unselectable.
+I ask Claude about it. It appear that with the current config it should be
+prevented, but this will help more. I will try it and see. In essence, there
+is setting iOS-specific CSS values.
+This had no effect. Was able to provide more details on how to duplicate. Claude
+had a different opinion: change the UTF arrow into graphics. This helped. In
+testing I found there are other things that are selectable by tapped not on
+buttons. For example, if I tap slightly below the buttons on the right-hand
+side, it will select the mute button. This improved; I want to continue.
+
+
+
+TODO: update README that game does work (decently) on a mobile phone
+TODO: the buttons are tricky on mobile. It appears that it's selecting the text
+	(the arrow) on a button. It needs to be unselectable.
 TODO: code review - is car noise based on distance and car speed?
 TODO: update README for changes, including adding the Mobile section 
 
